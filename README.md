@@ -42,14 +42,24 @@ On first load, you’ll be prompted for a token. It is saved to `localStorage.to
 This repo is configured for Pages under the path `/drews-movie-dashboard/`.
 - If your repo name or Pages path differs, change `base` in `vite.config.js`.
 
-Two common approaches:
+### Deploy using gh-pages branch (recommended)
+We include a `gh-pages` deploy script that builds and publishes `dist/` to the `gh-pages` branch.
 
-1) gh-pages branch
-- `npm run build`
-- Push `dist/` to a `gh-pages` branch and configure Pages to serve from that branch.
+Prerequisites:
+- A remote `origin` pointing to the GitHub repo with write access.
+- Ensure `base` in `vite.config.js` matches the repo name path.
 
-2) docs folder (main branch)
-- Either move `dist/` to `docs/`, or change build output to `docs/` and enable Pages from `/docs` in repo settings.
+Steps:
+- `npm run deploy`
+
+What it does:
+- Runs `npm run build`
+- Publishes `dist/` to the `gh-pages` branch via `gh-pages` package
+- In GitHub → Settings → Pages, choose Source: `Deploy from a branch`, Branch: `gh-pages` → `/ (root)`
+
+### Alternative: docs folder (main branch)
+- Either move `dist/` contents to a `docs/` folder, or configure Vite to build to `docs/`.
+- In GitHub → Settings → Pages, choose Source: `Deploy from a branch`, Branch: `main` → `/docs`.
 
 ## Error Handling
 - Network errors are shown in the UI and logged to the console.
@@ -58,4 +68,3 @@ Two common approaches:
 ## Notes
 - Versions require that a search was performed first (server caches groups); the UI enforces this order.
 - You can clear the saved token via the “Clear Token” button.
-
