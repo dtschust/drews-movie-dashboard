@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { searchMovies, getVersions, downloadMovie } from './api.js';
 import './index.css';
-import { Button, Input, Card, CardHeader, CardContent, Alert, Badge } from './components/ui.jsx';
+import { Button, Input, Card, CardHeader, CardContent, Alert, Badge, Modal } from './components/ui.jsx';
 import { Spinner } from './components/Spinner.jsx';
 
 function useLocalToken() {
@@ -81,6 +81,7 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [versions, setVersions] = useState([]);
   const [downloaded, setDownloaded] = useState(false);
+  const [pendingVersion, setPendingVersion] = useState(null);
 
   const canSearch = useMemo(() => query.trim().length > 0, [query]);
 
@@ -100,6 +101,23 @@ export default function App() {
     try {
       const { versions: list } = await getVersions(movie.id);
       setVersions(list || []);
+    } catch (e) {
+      console.error(e);
+      setError(String(e.message || e));
+    } finally { setLoading(false); }
+  }
+
+  function requestDownload(version) {
+    setPendingVersion(version);
+  }
+
+  async function confirmDownload() {
+    if (!pendingVersion) return;
+    setError(''); setLoading(true);
+    try {
+      await downloadMovie({ torrentId: pendingVersion.id, movieTitle: selectedMovie.title });
+      setDownloaded(true);
+      setPendingVersion(null);
     } catch (e) {
       console.error(e);
       setError(String(e.message || e));
@@ -185,7 +203,7 @@ export default function App() {
           </div>
           <div className="space-y-3">
             {versions.map((v) => (
-              <VersionRow key={v.id} v={v} onSelect={() => startDownload(v)} />
+              <VersionRow key={v.id} v={v} onSelect={() => requestDownload(v)} />
             ))}
             {versions.length === 0 && (
               <div className="text-muted-foreground">No versions available.</div>
@@ -205,6 +223,32 @@ export default function App() {
           </CardContent>
         </Card>
       )}
+
+      <Modal
+        open={!!pendingVersion}
+        onClose={() => setPendingVersion(null)}
+        title={selectedMovie ? `Confirm download — ${selectedMovie.title}` : 'Confirm download'}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setPendingVersion(null)} disabled={loading}>Cancel</Button>
+            <Button onClick={confirmDownload} disabled={loading}>{loading ? <Spinner /> : 'Start download'}</Button>
+          </>
+        )}
+      >
+        {pendingVersion && (
+          <div className="space-y-2">
+            <div className="text-sm text-muted-foreground">
+              {pendingVersion.goldenPopcorn ? '🍿 ' : ''}{pendingVersion.checked ? '✅ ' : ''}
+              {pendingVersion.quality} / {pendingVersion.codec} / {pendingVersion.container} / {pendingVersion.source} / {pendingVersion.resolution}
+              {pendingVersion.scene ? ' / Scene' : ''}
+              {pendingVersion.remasterTitle ? ` / ${pendingVersion.remasterTitle}` : ''}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Seeders: {pendingVersion.seeders}, Snatched: {pendingVersion.snatched}, Size: {pendingVersion.sizeGB?.toFixed ? pendingVersion.sizeGB.toFixed(2) : pendingVersion.sizeGB} GB
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

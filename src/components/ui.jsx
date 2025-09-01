@@ -39,3 +39,34 @@ export function Badge({ children, className = '' }) {
 export function Alert({ children, className = '' }) {
   return <div role="alert" className={`alert ${className}`}>{children}</div>;
 }
+
+// Lightweight modal/dialog
+export function Modal({ open, onClose, title, children, footer }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        className="relative w-full sm:max-w-lg sm:rounded-lg bg-card text-card-foreground border border-border shadow-lg p-4 sm:p-6"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {title ? <div className="text-lg font-semibold mb-3">{title}</div> : null}
+        <div className="mb-4">{children}</div>
+        {footer ? <div className="flex items-center justify-end gap-2">{footer}</div> : null}
+        <button
+          aria-label="Close"
+          className="absolute top-2 right-2 text-muted-foreground hover:opacity-80"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
