@@ -106,10 +106,14 @@ export default function App() {
     } finally { setLoading(false); }
   }
 
-  async function startDownload(torrentId) {
+  async function startDownload(version) {
+    const details = `${version.quality} / ${version.codec} / ${version.container} / ${version.source} / ${version.resolution}`;
+    const confirmMsg = `Start download for "${selectedMovie?.title}"?\n${details}\nSize: ${version.sizeGB?.toFixed ? version.sizeGB.toFixed(2) : version.sizeGB} GB`;
+    const proceed = typeof window !== 'undefined' ? window.confirm(confirmMsg) : true;
+    if (!proceed) return;
     setError(''); setLoading(true);
     try {
-      await downloadMovie({ torrentId, movieTitle: selectedMovie.title });
+      await downloadMovie({ torrentId: version.id, movieTitle: selectedMovie.title });
       setDownloaded(true);
     } catch (e) {
       console.error(e);
@@ -181,7 +185,7 @@ export default function App() {
           </div>
           <div className="space-y-3">
             {versions.map((v) => (
-              <VersionRow key={v.id} v={v} onSelect={() => startDownload(v.id)} />
+              <VersionRow key={v.id} v={v} onSelect={() => startDownload(v)} />
             ))}
             {versions.length === 0 && (
               <div className="text-muted-foreground">No versions available.</div>
