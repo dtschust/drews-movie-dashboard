@@ -33,9 +33,9 @@ function TokenGate({ onSaved }) {
       <h1 className="text-2xl font-semibold mb-4 text-foreground">Enter API Token</h1>
       <p className="text-sm text-muted-foreground mb-4">Store your token locally to access the API.</p>
       {error && <Alert className="mb-3">{error}</Alert>}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Input placeholder="Paste token..." value={value} onChange={(e)=>setValue(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') save(); }} />
-        <Button onClick={save}>Save</Button>
+        <Button className="w-full sm:w-auto" onClick={save}>Save</Button>
       </div>
     </div>
   );
@@ -153,9 +153,9 @@ export default function App() {
             <div className="font-medium">Search Movies</div>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input placeholder="Type a movie title..." value={query} onChange={(e)=>setQuery(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter' && canSearch) doSearch(); }} />
-              <Button onClick={doSearch} disabled={!canSearch || loading}>{loading ? <Spinner /> : 'Search'}</Button>
+              <Button className="w-full sm:w-auto" onClick={doSearch} disabled={!canSearch || loading}>{loading ? <Spinner /> : 'Search'}</Button>
             </div>
           </CardContent>
         </Card>
@@ -204,4 +204,3 @@ export default function App() {
     </div>
   );
 }
-
