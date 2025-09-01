@@ -34,7 +34,7 @@ function TokenGate({ onSaved }) {
       <p className="text-sm text-muted-foreground mb-4">Store your token locally to access the API.</p>
       {error && <Alert className="mb-3">{error}</Alert>}
       <div className="flex flex-col sm:flex-row gap-2">
-        <Input placeholder="Paste token..." value={value} onChange={(e)=>setValue(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') save(); }} />
+        <Input type="password" placeholder="Paste token..." value={value} onChange={(e)=>setValue(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') save(); }} />
         <Button className="w-full sm:w-auto" onClick={save}>Save</Button>
       </div>
     </div>
