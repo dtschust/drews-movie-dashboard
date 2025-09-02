@@ -83,6 +83,8 @@ export default function App() {
   const [versions, setVersions] = useState([]);
   const [downloaded, setDownloaded] = useState(false);
   const [pendingVersion, setPendingVersion] = useState(null);
+  // Track if user searched at least once (not used for rendering anymore),
+  // but can be useful if we want analytics or future behavior tweaks.
   const [hasSearched, setHasSearched] = useState(false);
 
   const canSearch = useMemo(() => query.trim().length > 0, [query]);
@@ -159,15 +161,16 @@ export default function App() {
   }
 
   function resetFlow() {
-    setQuery(''); setMovies([]); setTopMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setError(''); setHasSearched(false);
+    // Do not clear topMovies so they reappear instantly on the search page.
+    setQuery(''); setMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setError(''); setHasSearched(false);
   }
 
-  // Fetch top movies once we have a token and user hasn't searched yet.
+  // Fetch top movies once we have a token (only if not already loaded).
   useEffect(() => {
     let cancelled = false;
     async function fetchTop() {
-      if (!token || hasSearched) return;
-      setError('');
+      if (!token) return;
+      if (topMovies && topMovies.length > 0) return;
       try {
         const { movies: list } = await getTopMovies();
         if (!cancelled) setTopMovies(list || []);
@@ -180,7 +183,7 @@ export default function App() {
     }
     fetchTop();
     return () => { cancelled = true; };
-  }, [token, hasSearched]);
+  }, [token, topMovies?.length]);
 
   if (!token) {
     return <TokenGate onSaved={saveToken} />;
@@ -191,8 +194,7 @@ export default function App() {
       <header className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Drew's Movie Dashboard</h1>
         <div className="flex items-center gap-2">
-          <Badge>Authed</Badge>
-          <Button variant="outline" onClick={clearToken}>Clear Token</Button>
+          <Button variant="outline" onClick={clearToken}>Log out</Button>
         </div>
       </header>
 
@@ -226,7 +228,7 @@ export default function App() {
         <div className="flex items-center gap-2 text-muted-foreground"><Spinner /><span>Loading...</span></div>
       )}
 
-      {!loading && movies?.length > 0 && !selectedMovie && hasSearched && (
+      {!loading && movies?.length > 0 && !selectedMovie && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {movies.map((m) => (
             <MovieCard key={m.id} movie={m} onClick={() => loadVersions(m)} />
@@ -234,7 +236,7 @@ export default function App() {
         </div>
       )}
 
-      {!loading && !selectedMovie && !downloaded && !hasSearched && topMovies?.length > 0 && (
+      {!loading && !selectedMovie && !downloaded && movies?.length === 0 && topMovies?.length > 0 && (
         <div>
           <div className="mb-3 text-lg font-medium">Top Movies this Week</div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
