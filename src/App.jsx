@@ -162,10 +162,6 @@ export default function App() {
     setQuery(''); setMovies([]); setTopMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setError(''); setHasSearched(false);
   }
 
-  if (!token) {
-    return <TokenGate onSaved={saveToken} />;
-  }
-
   // Fetch top movies once we have a token and user hasn't searched yet.
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +181,10 @@ export default function App() {
     fetchTop();
     return () => { cancelled = true; };
   }, [token, hasSearched]);
+
+  if (!token) {
+    return <TokenGate onSaved={saveToken} />;
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6">
