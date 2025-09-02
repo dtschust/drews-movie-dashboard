@@ -21,6 +21,18 @@ export async function searchMovies(query) {
   return res.json(); // { movies }
 }
 
+export async function getTopMovies() {
+  const token = getToken();
+  const url = new URL(API_BASE + '/topMovies');
+  url.searchParams.set('token', token);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Top movies failed (${res.status})`);
+  }
+  return res.json(); // { movies }
+}
+
 export async function getVersions(id) {
   const token = getToken();
   const url = new URL(API_BASE + '/getVersions');
@@ -47,4 +59,3 @@ export async function downloadMovie({ torrentId, movieTitle }) {
   }
   return res.json(); // { ok, started }
 }
-

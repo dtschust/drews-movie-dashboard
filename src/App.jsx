@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { searchMovies, getVersions, downloadMovie } from './api.js';
+import { searchMovies, getVersions, downloadMovie, getTopMovies } from './api.js';
 import './index.css';
 import { Button, Input, Card, CardHeader, CardContent, Alert, Badge, Modal } from './components/ui.jsx';
 import { Spinner } from './components/Spinner.jsx';
@@ -78,18 +78,37 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [movies, setMovies] = useState([]);
+  const [topMovies, setTopMovies] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [versions, setVersions] = useState([]);
   const [downloaded, setDownloaded] = useState(false);
   const [pendingVersion, setPendingVersion] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const canSearch = useMemo(() => query.trim().length > 0, [query]);
 
   async function doSearch() {
-    setError(''); setLoading(true); setMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false);
+    setError(''); setLoading(true); setMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setHasSearched(true);
     try {
       const { movies: list } = await searchMovies(query.trim());
       setMovies(list || []);
+    } catch (e) {
+      console.error(e);
+      setError(String(e.message || e));
+    } finally { setLoading(false); }
+  }
+
+  // When a top movie is selected, perform a title-based search to resolve
+  // the movie by ID from the results, then proceed to load versions.
+  async function openTopMovie(movie) {
+    setError(''); setLoading(true); setSelectedMovie(null); setVersions([]); setDownloaded(false);
+    try {
+      const { movies: list } = await searchMovies(movie.title);
+      const match = (list || []).find((m) => m.id === movie.id);
+      if (!match) {
+        throw new Error('Could not resolve selected movie from search results.');
+      }
+      await loadVersions(match);
     } catch (e) {
       console.error(e);
       setError(String(e.message || e));
@@ -140,12 +159,32 @@ export default function App() {
   }
 
   function resetFlow() {
-    setQuery(''); setMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setError('');
+    setQuery(''); setMovies([]); setTopMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setError(''); setHasSearched(false);
   }
 
   if (!token) {
     return <TokenGate onSaved={saveToken} />;
   }
+
+  // Fetch top movies once we have a token and user hasn't searched yet.
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTop() {
+      if (!token || hasSearched) return;
+      setError('');
+      try {
+        const { movies: list } = await getTopMovies();
+        if (!cancelled) setTopMovies(list || []);
+      } catch (e) {
+        if (!cancelled) {
+          console.error(e);
+          setError(String(e.message || e));
+        }
+      }
+    }
+    fetchTop();
+    return () => { cancelled = true; };
+  }, [token, hasSearched]);
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -187,11 +226,22 @@ export default function App() {
         <div className="flex items-center gap-2 text-muted-foreground"><Spinner /><span>Loading...</span></div>
       )}
 
-      {!loading && movies?.length > 0 && !selectedMovie && (
+      {!loading && movies?.length > 0 && !selectedMovie && hasSearched && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {movies.map((m) => (
             <MovieCard key={m.id} movie={m} onClick={() => loadVersions(m)} />
           ))}
+        </div>
+      )}
+
+      {!loading && !selectedMovie && !downloaded && !hasSearched && topMovies?.length > 0 && (
+        <div>
+          <div className="mb-3 text-lg font-medium">Top Movies this Week</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {topMovies.map((m) => (
+              <MovieCard key={m.id} movie={m} onClick={() => openTopMovie(m)} />
+            ))}
+          </div>
         </div>
       )}
 
