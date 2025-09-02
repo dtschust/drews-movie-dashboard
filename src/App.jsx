@@ -106,6 +106,10 @@ export default function App() {
     setError(''); setLoading(true); setSelectedMovie(null); setVersions([]); setDownloaded(false);
     try {
       const { movies: list } = await searchMovies(movie.title);
+      // Keep these results so a Back action from versions can return here.
+      setMovies(list || []);
+      // Optionally reflect the query in the input.
+      setQuery(movie.title);
       const match = (list || []).find((m) => m.id === movie.id);
       if (!match) {
         throw new Error('Could not resolve selected movie from search results.');
@@ -163,6 +167,13 @@ export default function App() {
   function resetFlow() {
     // Do not clear topMovies so they reappear instantly on the search page.
     setQuery(''); setMovies([]); setSelectedMovie(null); setVersions([]); setDownloaded(false); setError(''); setHasSearched(false);
+  }
+
+  function goBackToResults() {
+    // Return to search results without clearing them
+    setSelectedMovie(null);
+    setVersions([]);
+    setDownloaded(false);
   }
 
   // Fetch top movies once we have a token (only if not already loaded).
@@ -257,7 +268,7 @@ export default function App() {
         <div>
           <div className="mb-4 flex items-center justify-between">
             <div className="text-lg font-medium">Versions for: {selectedMovie.title}</div>
-            <Button variant="outline" onClick={resetFlow}>Back</Button>
+            <Button variant="outline" onClick={goBackToResults}>Back</Button>
           </div>
           <div className="space-y-3">
             {versions.map((v) => (
