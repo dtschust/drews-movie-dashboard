@@ -229,10 +229,16 @@ export default function App() {
       )}
 
       {!loading && movies?.length > 0 && !selectedMovie && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {movies.map((m) => (
-            <MovieCard key={m.id} movie={m} onClick={() => loadVersions(m)} />
-          ))}
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-lg font-medium">Search Results</div>
+            <Button variant="outline" onClick={resetFlow}>Back</Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {movies.map((m) => (
+              <MovieCard key={m.id} movie={m} onClick={() => loadVersions(m)} />
+            ))}
+          </div>
         </div>
       )}
 
