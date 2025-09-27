@@ -359,12 +359,6 @@ function SearchPage({ topMovies, setError }) {
 
       {!loading && movies.length > 0 && (
         <div>
-          <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 text-sm font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>Results logged</span>
-            <Button variant="outline" onClick={goBack}>
-              Return to previous
-            </Button>
-          </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {movies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleMovieClick(m)} />
