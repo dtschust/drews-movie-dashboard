@@ -184,9 +184,6 @@ function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children 
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="ml-2 hidden sm:inline">
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            </span>
           </Button>
           <Button variant="outline" onClick={() => setLogoutOpen(true)}>
             Log out
@@ -478,9 +475,6 @@ function VersionsPage({ setError }) {
     <div>
       <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 text-sm font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span>Versions for: {titleForDisplay}</span>
-        <Button variant="outline" onClick={handleBack}>
-          Back to results
-        </Button>
       </div>
 
       {loading ? (
