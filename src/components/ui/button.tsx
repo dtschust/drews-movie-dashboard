@@ -5,26 +5,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border text-sm font-semibold tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.3)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-0 active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "border-[#1b3d94] bg-[linear-gradient(180deg,#3f7eda_0%,#2851a3_100%)] text-white hover:brightness-110",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "border-[#8a1b1b] bg-[linear-gradient(180deg,#d6514b_0%,#a32020_100%)] text-white shadow-[inset_0_1px_0_rgba(255,212,212,0.6),0_1px_2px_rgba(0,0,0,0.3)] hover:brightness-110",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "border-[#a2a5a9] bg-[linear-gradient(180deg,#f8f8f8_0%,#d9dce4_100%)] text-[#0b2d69] hover:brightness-105",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border-[#4a6fb5] bg-[linear-gradient(180deg,#6d9df2_0%,#4f7dce_100%)] text-white hover:brightness-110",
+        ghost:
+          "border border-transparent bg-transparent text-[#0a246a] shadow-none hover:bg-white/20",
+        link: "border-none bg-transparent p-0 text-[#0a3a94] underline-offset-4 shadow-none hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "px-4 py-2",
+        sm: "px-3 py-1.5 text-xs",
+        lg: "px-6 py-2.5 text-base",
+        icon: "h-9 w-9 p-0",
       },
     },
     defaultVariants: {
