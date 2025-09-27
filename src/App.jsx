@@ -585,7 +585,6 @@ export default function App() {
 
   const handleRestart = () => {
     setError('');
-    setTopMovies([]);
     topMoviesRequested.current = false;
     navigate('/search', { replace: true });
   };
