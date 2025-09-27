@@ -3,38 +3,380 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
+  --background: 197 53% 95%;
+  --foreground: 210 55% 16%;
+  --card: 200 44% 92%;
+  --card-foreground: 209 47% 18%;
+  --primary: 203 71% 36%;
+  --primary-foreground: 46 96% 88%;
+  --muted: 199 46% 88%;
+  --muted-foreground: 203 35% 32%;
+  --border: 203 55% 34%;
+  --input: 46 96% 88%;
+  --ring: 9 78% 62%;
+  --radius: 0.625rem;
 }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 
-/* shadcn-like utilities */
-.btn { @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none h-10 px-4 py-2; }
-.btn-primary { @apply bg-primary text-primary-foreground hover:opacity-90; }
-.btn-outline { @apply border border-border bg-transparent hover:bg-muted; }
+body {
+  font-family: 'Futura', 'Avenir Next', 'Gill Sans', 'Trebuchet MS', sans-serif;
+  background-color: #e6f1f7;
+  background-image:
+    linear-gradient(180deg, rgba(17, 84, 128, 0.08) 0%, rgba(17, 84, 128, 0.08) 40%, rgba(255, 255, 255, 0) 40%),
+    radial-gradient(circle at 50% -10%, rgba(255, 210, 102, 0.35) 0%, rgba(255, 210, 102, 0) 55%),
+    linear-gradient(135deg, rgba(204, 234, 244, 0.8), rgba(248, 253, 255, 0.6));
+  background-size: 100% 18px, 100% 100%, 100% 100%;
+  color: #123851;
+}
 
-.input { @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring; }
+a {
+  color: #ed6a5a;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+a:hover {
+  color: #f4d35e;
+}
+
+/* Utility foundations with Life Aquatic styling */
+.btn {
+  @apply inline-flex items-center justify-center whitespace-nowrap text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none h-10 px-4 py-2;
+  border-radius: 9999px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  background: linear-gradient(180deg, #f4d35e 0%, #f0c53a 100%);
+  color: #1c4d69;
+  box-shadow: 0 6px 0 rgba(18, 56, 81, 0.2);
+  border: 2px solid rgba(18, 56, 81, 0.25);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 0 rgba(18, 56, 81, 0.25);
+}
+
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 0 rgba(18, 56, 81, 0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #1e6f9f 0%, #155b82 100%);
+  color: #f4d35e;
+  border-color: rgba(12, 52, 74, 0.5);
+}
+
+.btn-outline {
+  background: rgba(244, 211, 94, 0.15);
+  color: #123851;
+  border-color: rgba(18, 56, 81, 0.45);
+}
+
+.input {
+  @apply flex h-10 w-full bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(17, 84, 128, 0.25);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(230, 241, 247, 0.9));
+  color: #0f3247;
+  box-shadow: inset 0 2px 4px rgba(18, 56, 81, 0.05);
+}
+
+.input::placeholder {
+  color: rgba(18, 56, 81, 0.5);
+  letter-spacing: 0.04em;
+}
 
 /* Prevent iOS Safari zoom on focus by ensuring >=16px font-size */
 @media (max-width: 640px) {
   .input, .btn { font-size: 16px; }
 }
 
-.card { @apply rounded-lg border border-border bg-card text-card-foreground shadow-sm; }
+.card {
+  @apply rounded-lg bg-card text-card-foreground;
+  border: 3px solid rgba(18, 56, 81, 0.25);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(222, 239, 247, 0.9));
+  box-shadow: 0 18px 35px rgba(8, 38, 53, 0.08), 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+}
+
+.card-header {
+  @apply p-4;
+  background: linear-gradient(90deg, rgba(21, 91, 130, 0.08), rgba(21, 91, 130, 0));
+  border-bottom: 2px solid rgba(18, 56, 81, 0.15);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: #155b82;
+}
+
 .card-content { @apply p-4; }
-.card-header { @apply p-4 border-b border-border; }
-.badge { @apply inline-flex items-center rounded-md border px-2 py-1 text-xs font-semibold bg-muted text-muted-foreground; }
-.alert { @apply rounded-lg border border-red-200 bg-red-50 text-red-900 p-4; }
-.spinner { @apply inline-block h-5 w-5 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin; }
+
+.badge {
+  @apply inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold;
+  background: rgba(30, 111, 159, 0.1);
+  color: #0f3247;
+  border: 1px solid rgba(18, 56, 81, 0.2);
+}
+
+.alert {
+  @apply p-4;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(237, 106, 90, 0.35);
+  background: rgba(237, 106, 90, 0.08);
+  color: #8f2f25;
+  font-weight: 500;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 3px solid rgba(18, 56, 81, 0.2);
+  border-top-color: #ed6a5a;
+  animation: aquatic-spin 0.9s linear infinite;
+}
+
+@keyframes aquatic-spin {
+  to { transform: rotate(360deg); }
+}
+
+.aquatic-container {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  position: relative;
+}
+
+.aquatic-container::before {
+  content: '';
+  position: absolute;
+  inset: 1.5rem 0 0;
+  background: linear-gradient(180deg, rgba(30, 111, 159, 0.18), rgba(30, 111, 159, 0));
+  border-radius: 32px 32px 12px 12px;
+  border: 2px solid rgba(18, 56, 81, 0.12);
+  box-shadow: 0 28px 40px rgba(21, 91, 130, 0.12);
+  z-index: -1;
+}
+
+.aquatic-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.aquatic-banner {
+  background: #1e6f9f;
+  color: #f4d35e;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  text-transform: uppercase;
+  box-shadow: 0 10px 20px rgba(18, 56, 81, 0.18);
+}
+
+.aquatic-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #123851;
+}
+
+.aquatic-subtitle {
+  color: rgba(18, 56, 81, 0.7);
+  max-width: 420px;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+
+.aquatic-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.aquatic-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(244, 211, 94, 0), rgba(244, 211, 94, 0.75), rgba(244, 211, 94, 0));
+  margin: 2.5rem 0 2rem;
+}
+
+.aquatic-panel {
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(30, 111, 159, 0.18);
+  box-shadow: 0 14px 24px rgba(12, 52, 74, 0.08);
+}
+
+.aquatic-toast {
+  border: 2px solid rgba(237, 106, 90, 0.4);
+  background: rgba(237, 106, 90, 0.08);
+  color: #8f2f25;
+}
+
+.aquatic-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.aquatic-grid-responsive {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.aquatic-result-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(244, 211, 94, 0.12);
+  border: 2px dashed rgba(18, 56, 81, 0.2);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  color: #174f73;
+  font-weight: 600;
+}
+
+@media (min-width: 640px) {
+  .aquatic-result-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.aquatic-movie-card {
+  border: 3px solid rgba(18, 56, 81, 0.12);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 18px rgba(18, 56, 81, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.aquatic-movie-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 25px rgba(18, 56, 81, 0.12);
+}
+
+.aquatic-movie-card img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  filter: saturate(1.1) contrast(0.98);
+}
+
+.aquatic-movie-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: linear-gradient(135deg, rgba(30, 111, 159, 0.12), rgba(244, 211, 94, 0.18));
+  color: rgba(18, 56, 81, 0.6);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.aquatic-movie-body {
+  padding: 1rem;
+  text-align: center;
+}
+
+.aquatic-movie-title {
+  font-weight: 600;
+  color: #123851;
+}
+
+.aquatic-movie-meta {
+  font-size: 0.85rem;
+  color: rgba(18, 56, 81, 0.6);
+}
+
+.aquatic-version-button {
+  width: 100%;
+  text-align: left;
+  padding: 1.25rem;
+  border-radius: 0.85rem;
+  border: 2px solid rgba(18, 56, 81, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.aquatic-version-button:hover {
+  border-color: rgba(244, 211, 94, 0.9);
+  transform: translateX(4px);
+}
+
+.aquatic-version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  color: rgba(18, 56, 81, 0.7);
+  font-size: 0.85rem;
+}
+
+.aquatic-modal {
+  border: 3px solid rgba(18, 56, 81, 0.35);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(230, 241, 247, 0.9));
+  border-radius: 1rem;
+  box-shadow: 0 30px 55px rgba(12, 52, 74, 0.25);
+}
+
+.aquatic-footer {
+  margin-top: 3rem;
+  text-align: center;
+  color: rgba(18, 56, 81, 0.6);
+  font-size: 0.85rem;
+}
+
+.aquatic-footer span {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(30, 111, 159, 0.12);
+}
+
+.aquatic-token-box {
+  max-width: 520px;
+  margin: 4rem auto;
+  padding: 2.5rem 2rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(230, 241, 247, 0.9), rgba(204, 231, 242, 0.9));
+  border: 3px solid rgba(18, 56, 81, 0.25);
+  box-shadow: 0 26px 42px rgba(12, 52, 74, 0.15);
+  text-align: center;
+}
+
+.aquatic-token-title {
+  font-size: 1.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #155b82;
+  margin-bottom: 1rem;
+}
+
+.aquatic-token-subtitle {
+  color: rgba(18, 56, 81, 0.65);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.aquatic-download-card {
+  border: 3px solid rgba(244, 211, 94, 0.6);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 211, 94, 0.18));
+}
+
+.aquatic-emphasis {
+  color: #ed6a5a;
+  font-weight: 600;
+}

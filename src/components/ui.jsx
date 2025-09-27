@@ -46,12 +46,12 @@ export function Modal({ open, onClose, title, children, footer }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-[#0b2c3f]/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
-        className="relative w-full sm:max-w-lg sm:rounded-lg bg-card text-card-foreground border border-border shadow-lg p-4 sm:p-6"
+        className="relative w-full sm:max-w-lg aquatic-modal p-4 sm:p-6"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}

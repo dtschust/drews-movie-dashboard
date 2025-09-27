@@ -49,11 +49,13 @@ function TokenGate({ onSaved }) {
     onSaved(value.trim());
   };
   return (
-    <div className="max-w-md mx-auto mt-24 p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-foreground">Enter API Token</h1>
-      <p className="text-sm text-muted-foreground mb-4">Store your token locally to access the API.</p>
-      {error && <Alert className="mb-3">{error}</Alert>}
-      <div className="flex flex-col sm:flex-row gap-2">
+    <div className="aquatic-token-box">
+      <h1 className="aquatic-token-title">Team Zissou Credentials</h1>
+      <p className="aquatic-token-subtitle">
+        Securely stow your access token to board the Belafonte and manage cinematic voyages.
+      </p>
+      {error && <Alert className="mb-4">{error}</Alert>}
+      <div className="flex flex-col sm:flex-row gap-3">
         <Input
           type="password"
           placeholder="Paste token..."
@@ -65,21 +67,24 @@ function TokenGate({ onSaved }) {
         />
         <Button className="w-full sm:w-auto" onClick={save}>Save</Button>
       </div>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Keep it close. Captain Steve dislikes loose credentials on deck.
+      </p>
     </div>
   );
 }
 
 function MovieCard({ movie, onClick }) {
   return (
-    <Card className="overflow-hidden hover:shadow transition cursor-pointer" onClick={onClick}>
+    <Card className="aquatic-movie-card cursor-pointer" onClick={onClick}>
       {movie.posterUrl ? (
-        <img src={movie.posterUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+        <img src={movie.posterUrl} alt={movie.title} className="object-cover" />
       ) : (
-        <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center text-muted-foreground">No Image</div>
+        <div className="aquatic-movie-fallback">No Poster On File</div>
       )}
-      <CardContent>
-        <div className="font-medium">{movie.title}</div>
-        <div className="text-sm text-muted-foreground">{movie.year || '—'}</div>
+      <CardContent className="aquatic-movie-body">
+        <div className="aquatic-movie-title" title={movie.title}>{movie.title}</div>
+        <div className="aquatic-movie-meta">{movie.year || 'Year Unknown'}</div>
       </CardContent>
     </Card>
   );
@@ -88,16 +93,19 @@ function MovieCard({ movie, onClick }) {
 function VersionRow({ v, onSelect }) {
   const line1 = `\n${v.quality} / ${v.codec} / ${v.container} / ${v.source} /\n${v.resolution}${v.scene ? ' / Scene' : ''}${v.remasterTitle ? ` / ${v.remasterTitle}` : ''}`;
   return (
-    <button className="w-full text-left p-3 rounded-md border border-border hover:bg-muted transition" onClick={onSelect}>
-      <div className="flex items-center gap-2">
-        <span>
-          {v.goldenPopcorn ? '🍿 ' : ''}
-          {v.checked ? '✅ ' : ''}
-        </span>
-        <span className="font-medium whitespace-pre-line">{line1}</span>
+    <button className="aquatic-version-button" onClick={onSelect}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="font-medium whitespace-pre-line">
+          {line1}
+        </div>
+        <div className="text-lg" aria-hidden="true">
+          {v.goldenPopcorn ? '🍿' : v.checked ? '✅' : '🎞️'}
+        </div>
       </div>
-      <div className="text-sm text-muted-foreground mt-1">
-        Seeders: {v.seeders}, Snatched: {v.snatched}, Size: {v.sizeGB?.toFixed ? v.sizeGB.toFixed(2) : v.sizeGB} GB
+      <div className="aquatic-version-meta mt-3">
+        <span>Seeders: {v.seeders}</span>
+        <span>Snatched: {v.snatched}</span>
+        <span>Size: {v.sizeGB?.toFixed ? v.sizeGB.toFixed(2) : v.sizeGB} GB</span>
       </div>
     </button>
   );
@@ -105,27 +113,38 @@ function VersionRow({ v, onSelect }) {
 
 function AppLayout({ onLogout, error, onRestart, children }) {
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Drew's Movie Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onLogout}>Log out</Button>
+    <div className="aquatic-container">
+      <header className="aquatic-header">
+        <span className="aquatic-banner">Team Zissou Operations</span>
+        <h1 className="aquatic-title">Drew&apos;s Movie Dashboard</h1>
+        <p className="aquatic-subtitle">
+          Mission control for cinematic expeditions inspired by <span className="aquatic-emphasis">The Life Aquatic</span>.
+        </p>
+        <div className="aquatic-actions">
+          <Button onClick={onRestart}>Refresh Manifest</Button>
+          <Button variant="outline" onClick={onLogout}>Abandon Mission</Button>
         </div>
       </header>
 
       {error && (
-        <div className="mb-4">
-          <Alert>
-            <div className="font-medium mb-1">Something went wrong</div>
-            <div className="text-sm">{error}</div>
-            <div className="mt-3 flex gap-2">
-              <Button variant="outline" onClick={onRestart}>Restart</Button>
-            </div>
-          </Alert>
+        <div className="aquatic-panel aquatic-toast mb-4">
+          <div className="font-semibold tracking-wide uppercase text-sm">Alert from the Engine Room</div>
+          <div className="mt-2 text-sm">{error}</div>
+          <div className="mt-3">
+            <Button variant="outline" onClick={onRestart}>Attempt Restart</Button>
+          </div>
         </div>
       )}
 
-      {children}
+      <div className="aquatic-panel">
+        {children}
+      </div>
+
+      <div className="aquatic-divider" aria-hidden="true" />
+
+      <footer className="aquatic-footer">
+        <span>Always pack a red beanie and a sense of wonder.</span>
+      </footer>
     </div>
   );
 }
@@ -229,7 +248,7 @@ function SearchPage({ topMovies, setError }) {
     <>
       <Card className="mb-6">
         <CardHeader>
-          <div className="font-medium">Search Movies</div>
+          <div>Search the Catalog</div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -251,17 +270,17 @@ function SearchPage({ topMovies, setError }) {
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
-          <span>Loading...</span>
+          <span>Scanning the horizon...</span>
         </div>
       )}
 
       {!loading && movies.length > 0 && (
         <div>
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-lg font-medium">Search Results</div>
-            <Button variant="outline" onClick={goBack}>Back</Button>
+          <div className="aquatic-result-header mb-4">
+            <span>Results Logged</span>
+            <Button variant="outline" onClick={goBack}>Return to Chart</Button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="aquatic-grid aquatic-grid-responsive">
             {movies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleMovieClick(m)} />
             ))}
@@ -271,8 +290,10 @@ function SearchPage({ topMovies, setError }) {
 
       {showTopMovies && (
         <div>
-          <div className="mb-3 text-lg font-medium">Top Movies this Week</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="mb-3 font-semibold tracking-widest uppercase text-xs text-muted-foreground">
+            Weekly Recommendations from the Belafonte Library
+          </div>
+          <div className="aquatic-grid aquatic-grid-responsive">
             {topMovies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleTopMovie(m)} />
             ))}
@@ -367,15 +388,15 @@ function VersionsPage({ setError }) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-lg font-medium">Versions for: {titleForDisplay}</div>
-        <Button variant="outline" onClick={handleBack}>Back</Button>
+      <div className="aquatic-result-header mb-4">
+        <span>Versions for: {titleForDisplay}</span>
+        <Button variant="outline" onClick={handleBack}>Back to Log</Button>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
-          <span>Loading...</span>
+          <span>Cataloging editions...</span>
         </div>
       ) : (
         <div className="space-y-3">
@@ -430,13 +451,15 @@ function DownloadPage() {
   const movieTitle = searchParams.get('title');
 
   return (
-    <Card>
+    <Card className="aquatic-download-card">
       <CardHeader>
-        <div className="font-medium">Download Started</div>
+        <div>Download Initiated</div>
       </CardHeader>
       <CardContent>
         <p className="mb-4 text-muted-foreground">
-          {movieTitle ? `Download started for "${movieTitle}".` : 'Your download has been initiated successfully.'}
+          {movieTitle
+            ? `The Belafonte is retrieving "${movieTitle}". Stand by with your red cap.`
+            : 'Transfer underway. Keep the deck clear for another search.'}
         </p>
         <Button onClick={() => navigate('/search')}>Start another search</Button>
       </CardContent>
