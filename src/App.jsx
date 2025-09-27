@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/Spinner.jsx';
+import { Moon, Sun } from 'lucide-react';
 
 function useLocalToken() {
   const [token, setToken] = useState('');
@@ -162,25 +163,61 @@ function VersionRow({ v, onSelect }) {
   );
 }
 
-function AppLayout({ onLogout, error, onRestart, children }) {
+function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children }) {
+  const [logoutOpen, setLogoutOpen] = useState(false);
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground">Drew's Movie Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Mission control for Drew's movie downloads.
-          </p>
+          <button
+            type="button"
+            onClick={onRestart}
+            className="text-left text-3xl font-semibold text-foreground transition hover:text-primary focus:outline-none focus-visible:underline"
+          >
+            Drew's Movie Dashboard
+          </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={onRestart}>
-            Restart session
+          <Button
+            variant="outline"
+            onClick={onToggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className="ml-2 hidden sm:inline">
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </span>
           </Button>
-          <Button variant="outline" onClick={onLogout}>
+          <Button variant="outline" onClick={() => setLogoutOpen(true)}>
             Log out
           </Button>
         </div>
       </header>
+
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log out</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out? You will need to enter your API token again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setLogoutOpen(false);
+                onLogout();
+              }}
+            >
+              Log out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {error && (
         <Alert variant="destructive">
@@ -533,6 +570,75 @@ export default function App() {
   const [topMovies, setTopMovies] = useState([]);
   const [error, setError] = useState('');
   const topMoviesRequested = useRef(false);
+  const [isManualTheme, setIsManualTheme] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = localStorage.getItem('theme');
+      return stored === 'light' || stored === 'dark';
+    } catch {
+      return false;
+    }
+  });
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'light' || stored === 'dark') {
+        return stored;
+      }
+    } catch {
+      /* noop */
+    }
+    const prefersDark =
+      typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : false;
+    return prefersDark ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    if (isManualTheme) {
+      try {
+        localStorage.setItem('theme', theme);
+      } catch {
+        /* noop */
+      }
+    } else {
+      try {
+        localStorage.removeItem('theme');
+      } catch {
+        /* noop */
+      }
+    }
+  }, [theme, isManualTheme]);
+
+  useEffect(() => {
+    if (isManualTheme) return;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (event) => {
+      setTheme(event.matches ? 'dark' : 'light');
+    };
+
+    setTheme(mediaQuery.matches ? 'dark' : 'light');
+    mediaQuery.addEventListener('change', handleChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, [isManualTheme]);
+
+  const toggleTheme = () => {
+    setIsManualTheme(true);
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -590,7 +696,13 @@ export default function App() {
   };
 
   return (
-    <AppLayout onLogout={handleLogout} error={error} onRestart={handleRestart}>
+    <AppLayout
+      onLogout={handleLogout}
+      error={error}
+      onRestart={handleRestart}
+      onToggleTheme={toggleTheme}
+      theme={theme}
+    >
       <Routes>
         <Route path="/" element={<SearchPage topMovies={topMovies} setError={setError} />} />
         <Route path="/search" element={<SearchPage topMovies={topMovies} setError={setError} />} />
