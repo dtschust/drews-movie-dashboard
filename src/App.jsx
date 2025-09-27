@@ -49,12 +49,11 @@ function TokenGate({ onSaved }) {
     onSaved(value.trim());
   };
   return (
-    <div className="geo-token-box">
-      <div className="geo-pixel-heart" aria-hidden="true" />
-      <h1 className="geo-token-title">Secret Access Portal</h1>
-      <p className="geo-token-subtitle">Enter your top-secret token to unlock the movie vault of dreams!</p>
-      {error && <Alert className="mb-4">{error}</Alert>}
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+    <div className="max-w-md mx-auto mt-24 p-6">
+      <h1 className="text-2xl font-semibold mb-4 text-foreground">Enter API Token</h1>
+      <p className="text-sm text-muted-foreground mb-4">Store your token locally to access the API.</p>
+      {error && <Alert className="mb-3">{error}</Alert>}
+      <div className="flex flex-col sm:flex-row gap-2">
         <Input
           type="password"
           placeholder="Paste token..."
@@ -66,26 +65,21 @@ function TokenGate({ onSaved }) {
         />
         <Button className="w-full sm:w-auto" onClick={save}>Save</Button>
       </div>
-      <p className="mt-4 text-sm text-blue-900">
-        Lost your token? Fax Drew for assistance or shout into the void of cyberspace.
-      </p>
     </div>
   );
 }
 
 function MovieCard({ movie, onClick }) {
   return (
-    <Card className="geo-movie-card overflow-hidden cursor-pointer" onClick={onClick}>
+    <Card className="overflow-hidden hover:shadow transition cursor-pointer" onClick={onClick}>
       {movie.posterUrl ? (
         <img src={movie.posterUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
       ) : (
-        <div className="w-full aspect-[2/3] flex items-center justify-center bg-gradient-to-br from-pink-200 via-yellow-100 to-purple-200 text-blue-900 font-black text-lg">
-          ✨ No Poster ✨
-        </div>
+        <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center text-muted-foreground">No Image</div>
       )}
-      <CardContent className="flex flex-col items-center gap-1">
-        <div className="geo-movie-title" title={movie.title}>{movie.title}</div>
-        <div className="geo-movie-year">{movie.year || 'Unknown Year'}</div>
+      <CardContent>
+        <div className="font-medium">{movie.title}</div>
+        <div className="text-sm text-muted-foreground">{movie.year || '—'}</div>
       </CardContent>
     </Card>
   );
@@ -94,7 +88,7 @@ function MovieCard({ movie, onClick }) {
 function VersionRow({ v, onSelect }) {
   const line1 = `\n${v.quality} / ${v.codec} / ${v.container} / ${v.source} /\n${v.resolution}${v.scene ? ' / Scene' : ''}${v.remasterTitle ? ` / ${v.remasterTitle}` : ''}`;
   return (
-    <button className="w-full text-left p-3 rounded-md geo-version-row" onClick={onSelect}>
+    <button className="w-full text-left p-3 rounded-md border border-border hover:bg-muted transition" onClick={onSelect}>
       <div className="flex items-center gap-2">
         <span>
           {v.goldenPopcorn ? '🍿 ' : ''}
@@ -111,51 +105,27 @@ function VersionRow({ v, onSelect }) {
 
 function AppLayout({ onLogout, error, onRestart, children }) {
   return (
-    <div className="geo-container">
-      <div className="geo-top-banner">
-        <div className="geo-pixel-heart" aria-hidden="true" />
-        <span>Welcome to <span className="geo-highlight">Drew&apos;s Movie Megaplex</span> — the web&apos;s #1 spot for cinematic vibes!</span>
-        <div className="geo-pixel-heart" aria-hidden="true" />
-      </div>
-      <header className="geo-header">
-        <div className="geo-title">Drew&apos;s Movie Dashboard</div>
-        <div className="geo-subtitle geo-blink">Serving fresh flicks since 1998!</div>
-        <div className="geo-button-row">
-          <Button onClick={onRestart}>Refresh the Magic</Button>
+    <div className="max-w-6xl mx-auto p-6">
+      <header className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Drew's Movie Dashboard</h1>
+        <div className="flex items-center gap-2">
           <Button variant="outline" onClick={onLogout}>Log out</Button>
         </div>
       </header>
-      <marquee className="geo-marquee" behavior="scroll" direction="left" scrollAmount="7">
-        <span>🎬 Hot tip: Search for your faves and feel the thrills!</span>
-        <span>💾 Remember to back up your VHS collection!</span>
-        <span className="geo-blink">✨ Bookmark this portal in Netscape! ✨</span>
-        <span>📼 Be kind, rewind your downloads!</span>
-      </marquee>
 
       {error && (
-        <div className="geo-error-panel">
-          <div className="geo-section-title">Something went wrong!</div>
-          <div className="geo-backdrop mt-2">{error}</div>
-          <div className="geo-button-row mt-3">
-            <Button variant="outline" onClick={onRestart}>Try Again</Button>
-          </div>
+        <div className="mb-4">
+          <Alert>
+            <div className="font-medium mb-1">Something went wrong</div>
+            <div className="text-sm">{error}</div>
+            <div className="mt-3 flex gap-2">
+              <Button variant="outline" onClick={onRestart}>Restart</Button>
+            </div>
+          </Alert>
         </div>
       )}
 
-      <div className="geo-content-box">
-        {children}
-      </div>
-
-      <div className="geo-divider" aria-hidden="true" />
-      <footer className="geo-footer">
-        <div>Thanks for surfing by! Sign our imaginary guestbook before you go.</div>
-        <div className="geo-footer-counter">
-          <span className="geo-visitor-star" aria-hidden="true" />
-          <span>You are visitor #00{(new Date().getDate() * 7).toString().padStart(3, '0')}!* Wow!</span>
-          <span className="geo-visitor-star" aria-hidden="true" />
-        </div>
-        <small>* totally real counter refreshed hourly</small>
-      </footer>
+      {children}
     </div>
   );
 }
@@ -257,9 +227,9 @@ function SearchPage({ topMovies, setError }) {
 
   return (
     <>
-      <Card className="mb-6 geo-download-card">
+      <Card className="mb-6">
         <CardHeader>
-          <div className="geo-section-title">Search the Movie Vault</div>
+          <div className="font-medium">Search Movies</div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -279,7 +249,7 @@ function SearchPage({ topMovies, setError }) {
       </Card>
 
       {loading && (
-        <div className="flex items-center gap-2 geo-backdrop w-fit">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
           <span>Loading...</span>
         </div>
@@ -287,11 +257,11 @@ function SearchPage({ topMovies, setError }) {
 
       {!loading && movies.length > 0 && (
         <div>
-          <div className="mb-4 geo-backdrop flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <span className="geo-section-title">Search Results</span>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-lg font-medium">Search Results</div>
             <Button variant="outline" onClick={goBack}>Back</Button>
           </div>
-          <div className="geo-grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {movies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleMovieClick(m)} />
             ))}
@@ -301,8 +271,8 @@ function SearchPage({ topMovies, setError }) {
 
       {showTopMovies && (
         <div>
-          <div className="mb-3 geo-section-title">Top Movies this Week</div>
-          <div className="geo-grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="mb-3 text-lg font-medium">Top Movies this Week</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {topMovies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleTopMovie(m)} />
             ))}
@@ -397,13 +367,13 @@ function VersionsPage({ setError }) {
 
   return (
     <div>
-      <div className="mb-4 geo-backdrop flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <span className="geo-section-title">Versions for: {titleForDisplay}</span>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-lg font-medium">Versions for: {titleForDisplay}</div>
         <Button variant="outline" onClick={handleBack}>Back</Button>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 geo-backdrop w-fit">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
           <span>Loading...</span>
         </div>
@@ -460,13 +430,13 @@ function DownloadPage() {
   const movieTitle = searchParams.get('title');
 
   return (
-    <Card className="geo-download-card">
+    <Card>
       <CardHeader>
-        <div className="geo-section-title">Download Started</div>
+        <div className="font-medium">Download Started</div>
       </CardHeader>
       <CardContent>
-        <p className="mb-4 text-blue-900 font-bold">
-          {movieTitle ? `Download started for "${movieTitle}". Grab some popcorn while your modem hums!` : 'Your download has been initiated successfully. Time to celebrate with a victory dance!'}
+        <p className="mb-4 text-muted-foreground">
+          {movieTitle ? `Download started for "${movieTitle}".` : 'Your download has been initiated successfully.'}
         </p>
         <Button onClick={() => navigate('/search')}>Start another search</Button>
       </CardContent>
