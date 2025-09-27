@@ -208,9 +208,10 @@ function SearchPage({ topMovies, setError }) {
     navigate(`/torrents/${movie.id}?${params.toString()}`);
   };
 
-  const handleTopMovie = (movie) => {
+  const handleTopMovie = async (movie) => {
     const params = new URLSearchParams();
     if (movie.title) {
+      await searchMovies(movie.title);
       params.set('title', movie.title);
       params.set('query', movie.title);
     }
