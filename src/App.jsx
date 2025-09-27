@@ -165,134 +165,31 @@ function VersionRow({ v, onSelect }) {
 
 function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const [clock, setClock] = useState(() => new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setClock(new Date());
-    }, 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formattedTime = clock.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const formattedDate = clock.toLocaleDateString([], {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-
   return (
-    <div className="xp-desktop">
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="xp-window">
-          <div className="xp-title-bar">
-            <div className="flex items-center gap-2">
-              <span className="xp-title-icon" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={onRestart}
-                className="text-left text-xl font-semibold tracking-tight text-white transition hover:text-white/80 focus:outline-none focus-visible:underline"
-              >
-                Drew's Movie Dashboard
-              </button>
-            </div>
-            <div className="flex items-center gap-1">
-              <button type="button" className="xp-title-button" aria-label="Minimize window">
-                _
-              </button>
-              <button type="button" className="xp-title-button" aria-label="Maximize window">
-                □
-              </button>
-              <button
-                type="button"
-                className="xp-title-button"
-                aria-label="Close window"
-                onClick={() => setLogoutOpen(true)}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-          <div className="xp-window-toolbar flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <button type="button" className="xp-menu-item">
-                File
-              </button>
-              <button type="button" className="xp-menu-item">
-                Edit
-              </button>
-              <button type="button" className="xp-menu-item">
-                View
-              </button>
-              <button type="button" className="xp-menu-item hidden sm:inline">
-                Favorites
-              </button>
-              <button type="button" className="xp-menu-item hidden sm:inline">
-                Tools
-              </button>
-              <button type="button" className="xp-menu-item">
-                Help
-              </button>
-            </div>
-            <div className="ml-auto flex flex-wrap items-center gap-2 text-sm text-[#0a246a]">
-              <span className="hidden sm:inline">Session active</span>
-              <Button variant="outline" size="sm" onClick={onRestart}>
-                Restart session
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onToggleTheme}
-                aria-label={`Switch to ${theme === 'dark' ? 'daylight' : 'midnight'} theme`}
-              >
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                <span className="hidden sm:ml-2 sm:inline">
-                  {theme === 'dark' ? 'Daylight theme' : 'Midnight theme'}
-                </span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setLogoutOpen(true)}>
-                Log out
-              </Button>
-            </div>
-          </div>
-          <div className="xp-window-body space-y-6">
-            {error && (
-              <Alert variant="destructive">
-                <AlertTitle>Something went wrong</AlertTitle>
-                <AlertDescription className="flex flex-col gap-3">
-                  <span>{error}</span>
-                  <Button variant="outline" onClick={onRestart} className="w-fit">
-                    Restart
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
-            {children}
-          </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <button
+            type="button"
+            onClick={onRestart}
+            className="text-left text-3xl font-semibold text-foreground transition hover:text-primary focus:outline-none focus-visible:underline"
+          >
+            Drew's Movie Dashboard
+          </button>
         </div>
-      </div>
-
-      <footer className="xp-taskbar">
-        <button type="button" className="xp-start-button">
-          <span role="img" aria-hidden="true">
-            🌟
-          </span>
-          Start
-        </button>
-        <button type="button" className="xp-task-button" onClick={onRestart}>
-          <span role="img" aria-hidden="true">
-            🎬
-          </span>
-          Drew's Movie Dashboard
-        </button>
-        <div className="xp-clock">
-          <div>{formattedTime}</div>
-          <div>{formattedDate}</div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={onToggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" onClick={() => setLogoutOpen(true)}>
+            Log out
+          </Button>
         </div>
-      </footer>
+      </header>
 
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <DialogContent>
@@ -318,6 +215,20 @@ function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{error}</span>
+            <Button variant="outline" onClick={onRestart} className="w-fit">
+              Restart
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-6">{children}</div>
     </div>
   );
 }
