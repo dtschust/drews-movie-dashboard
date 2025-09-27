@@ -2,6 +2,8 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "allowJs": true,
+    "emitDeclarationOnly": false,
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
