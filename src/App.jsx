@@ -189,15 +189,21 @@ function SearchPage({ topMovies, setError }) {
     setSearchParams({ query: inputValue.trim() });
   };
 
-  const resetFlow = () => {
+  const goBack = () => {
     setError('');
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
     setInputValue('');
     setMovies([]);
     setHasSearched(false);
     if (location.pathname !== '/search') {
       navigate('/search', { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
     }
-    setSearchParams({});
   };
 
   const handleMovieClick = (movie) => {
@@ -211,6 +217,7 @@ function SearchPage({ topMovies, setError }) {
   const handleTopMovie = async (movie) => {
     const params = new URLSearchParams();
     if (movie.title) {
+      // The server only prepares versions for movies that appeared in search results, so run a search first.
       await searchMovies(movie.title);
       params.set('title', movie.title);
       params.set('query', movie.title);
@@ -252,7 +259,7 @@ function SearchPage({ topMovies, setError }) {
         <div>
           <div className="mb-4 flex items-center justify-between">
             <div className="text-lg font-medium">Search Results</div>
-            <Button variant="outline" onClick={resetFlow}>Back</Button>
+            <Button variant="outline" onClick={goBack}>Back</Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {movies.map((m) => (
@@ -323,10 +330,15 @@ function VersionsPage({ setError }) {
 
   const handleBack = () => {
     setError('');
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
     if (originQuery) {
-      navigate(`/search?query=${encodeURIComponent(originQuery)}`);
+      navigate(`/search?query=${encodeURIComponent(originQuery)}`, { replace: true });
     } else {
-      navigate('/search');
+      navigate('/search', { replace: true });
     }
   };
 
