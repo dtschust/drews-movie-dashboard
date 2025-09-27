@@ -1,9 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { Routes, Route, Navigate, useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useSearchParams,
+  useParams,
+  useLocation,
+} from 'react-router-dom';
 import { searchMovies, getVersions, downloadMovie, getTopMovies } from './api.js';
 import './index.css';
-import { Button, Input, Card, CardHeader, CardContent, Alert, Modal } from './components/ui.jsx';
-import { Spinner } from './components/Spinner.jsx';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Spinner } from '@/components/Spinner.jsx';
 
 function useLocalToken() {
   const [token, setToken] = useState('');
@@ -49,37 +68,70 @@ function TokenGate({ onSaved }) {
     onSaved(value.trim());
   };
   return (
-    <div className="max-w-md mx-auto mt-24 p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-foreground">Enter API Token</h1>
-      <p className="text-sm text-muted-foreground mb-4">Store your token locally to access the API.</p>
-      {error && <Alert className="mb-3">{error}</Alert>}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Input
-          type="password"
-          placeholder="Paste token..."
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') save();
-          }}
-        />
-        <Button className="w-full sm:w-auto" onClick={save}>Save</Button>
-      </div>
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-2xl">Enter API token</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Store your token locally to access the API.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertTitle>Missing token</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Input
+              type="password"
+              placeholder="Paste token..."
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') save();
+              }}
+            />
+            <Button className="w-full sm:w-auto" onClick={save}>
+              Save
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your token is only stored locally in this browser.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
 function MovieCard({ movie, onClick }) {
   return (
-    <Card className="overflow-hidden hover:shadow transition cursor-pointer" onClick={onClick}>
+    <Card
+      className="flex h-full cursor-pointer flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lg"
+      onClick={onClick}
+    >
       {movie.posterUrl ? (
-        <img src={movie.posterUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+        <div className="aspect-[2/3] w-full overflow-hidden">
+          <img
+            src={movie.posterUrl}
+            alt={movie.title}
+            className="h-full w-full object-cover"
+          />
+        </div>
       ) : (
-        <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center text-muted-foreground">No Image</div>
+        <div className="flex aspect-[2/3] w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+          No poster available
+        </div>
       )}
-      <CardContent>
-        <div className="font-medium">{movie.title}</div>
-        <div className="text-sm text-muted-foreground">{movie.year || '—'}</div>
+      <CardContent className="px-4 py-3">
+        <div className="font-semibold" title={movie.title}>
+          {movie.title}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {movie.year || 'Year unknown'}
+        </div>
       </CardContent>
     </Card>
   );
@@ -88,16 +140,23 @@ function MovieCard({ movie, onClick }) {
 function VersionRow({ v, onSelect }) {
   const line1 = `\n${v.quality} / ${v.codec} / ${v.container} / ${v.source} /\n${v.resolution}${v.scene ? ' / Scene' : ''}${v.remasterTitle ? ` / ${v.remasterTitle}` : ''}`;
   return (
-    <button className="w-full text-left p-3 rounded-md border border-border hover:bg-muted transition" onClick={onSelect}>
-      <div className="flex items-center gap-2">
-        <span>
-          {v.goldenPopcorn ? '🍿 ' : ''}
-          {v.checked ? '✅ ' : ''}
-        </span>
-        <span className="font-medium whitespace-pre-line">{line1}</span>
+    <button
+      type="button"
+      className="w-full rounded-lg border border-border bg-card/70 p-4 text-left transition hover:border-primary/60 hover:bg-card"
+      onClick={onSelect}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="whitespace-pre-line text-sm font-medium text-foreground">
+          {line1}
+        </div>
+        <div className="text-lg" aria-hidden="true">
+          {v.goldenPopcorn ? '🍿' : v.checked ? '✅' : '🎞️'}
+        </div>
       </div>
-      <div className="text-sm text-muted-foreground mt-1">
-        Seeders: {v.seeders}, Snatched: {v.snatched}, Size: {v.sizeGB?.toFixed ? v.sizeGB.toFixed(2) : v.sizeGB} GB
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span>Seeders: {v.seeders}</span>
+        <span>Snatched: {v.snatched}</span>
+        <span>Size: {v.sizeGB?.toFixed ? v.sizeGB.toFixed(2) : v.sizeGB} GB</span>
       </div>
     </button>
   );
@@ -105,27 +164,37 @@ function VersionRow({ v, onSelect }) {
 
 function AppLayout({ onLogout, error, onRestart, children }) {
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Drew's Movie Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onLogout}>Log out</Button>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Drew's Movie Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Mission control for Drew's movie downloads.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={onRestart}>
+            Restart session
+          </Button>
+          <Button variant="outline" onClick={onLogout}>
+            Log out
+          </Button>
         </div>
       </header>
 
       {error && (
-        <div className="mb-4">
-          <Alert>
-            <div className="font-medium mb-1">Something went wrong</div>
-            <div className="text-sm">{error}</div>
-            <div className="mt-3 flex gap-2">
-              <Button variant="outline" onClick={onRestart}>Restart</Button>
-            </div>
-          </Alert>
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{error}</span>
+            <Button variant="outline" onClick={onRestart} className="w-fit">
+              Restart
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
-      {children}
+      <div className="space-y-6">{children}</div>
     </div>
   );
 }
@@ -217,7 +286,6 @@ function SearchPage({ topMovies, setError }) {
   const handleTopMovie = async (movie) => {
     const params = new URLSearchParams();
     if (movie.title) {
-      // The server only prepares versions for movies that appeared in search results, so run a search first.
       await searchMovies(movie.title);
       params.set('title', movie.title);
       params.set('query', movie.title);
@@ -229,10 +297,10 @@ function SearchPage({ topMovies, setError }) {
     <>
       <Card className="mb-6">
         <CardHeader>
-          <div className="font-medium">Search Movies</div>
+          <CardTitle>Search movies</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Input
               placeholder="Type a movie title..."
               value={inputValue}
@@ -251,17 +319,19 @@ function SearchPage({ topMovies, setError }) {
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
-          <span>Loading...</span>
+          <span>Scanning the catalog...</span>
         </div>
       )}
 
       {!loading && movies.length > 0 && (
         <div>
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-lg font-medium">Search Results</div>
-            <Button variant="outline" onClick={goBack}>Back</Button>
+          <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 text-sm font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>Results logged</span>
+            <Button variant="outline" onClick={goBack}>
+              Return to previous
+            </Button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {movies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleMovieClick(m)} />
             ))}
@@ -271,8 +341,10 @@ function SearchPage({ topMovies, setError }) {
 
       {showTopMovies && (
         <div>
-          <div className="mb-3 text-lg font-medium">Top Movies this Week</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Weekly recommendations
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {topMovies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleTopMovie(m)} />
             ))}
@@ -367,15 +439,17 @@ function VersionsPage({ setError }) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-lg font-medium">Versions for: {titleForDisplay}</div>
-        <Button variant="outline" onClick={handleBack}>Back</Button>
+      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 text-sm font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span>Versions for: {titleForDisplay}</span>
+        <Button variant="outline" onClick={handleBack}>
+          Back to results
+        </Button>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
-          <span>Loading...</span>
+          <span>Cataloging editions...</span>
         </div>
       ) : (
         <div className="space-y-3">
@@ -383,43 +457,50 @@ function VersionsPage({ setError }) {
             <VersionRow key={v.id} v={v} onSelect={() => requestDownload(v)} />
           ))}
           {versions.length === 0 && (
-            <div className="text-muted-foreground">No versions available.</div>
+            <div className="text-sm text-muted-foreground">No versions available.</div>
           )}
         </div>
       )}
 
-      <Modal
+      <Dialog
         open={!!pendingVersion}
-        onClose={() => {
-          if (!isSubmitting) setPendingVersion(null);
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !isSubmitting) {
+            setPendingVersion(null);
+          }
         }}
-        title={movieTitle ? `Confirm download — ${movieTitle}` : 'Confirm download'}
-        footer={(
-          <>
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{movieTitle ? `Confirm download — ${movieTitle}` : 'Confirm download'}</DialogTitle>
+            <DialogDescription>
+              Review this release before starting the download.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingVersion && (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div>
+                {pendingVersion.goldenPopcorn ? '🍿 ' : ''}
+                {pendingVersion.checked ? '✅ ' : ''}
+                {pendingVersion.quality} / {pendingVersion.codec} / {pendingVersion.container} / {pendingVersion.source} / {pendingVersion.resolution}
+                {pendingVersion.scene ? ' / Scene' : ''}
+                {pendingVersion.remasterTitle ? ` / ${pendingVersion.remasterTitle}` : ''}
+              </div>
+              <div>
+                Seeders: {pendingVersion.seeders}, Snatched: {pendingVersion.snatched}, Size: {pendingVersion.sizeGB?.toFixed ? pendingVersion.sizeGB.toFixed(2) : pendingVersion.sizeGB} GB
+              </div>
+            </div>
+          )}
+          <DialogFooter>
             <Button variant="outline" onClick={() => setPendingVersion(null)} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button onClick={confirmDownload} disabled={isSubmitting}>
               {isSubmitting ? <Spinner /> : 'Start download'}
             </Button>
-          </>
-        )}
-      >
-        {pendingVersion && (
-          <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">
-              {pendingVersion.goldenPopcorn ? '🍿 ' : ''}
-              {pendingVersion.checked ? '✅ ' : ''}
-              {pendingVersion.quality} / {pendingVersion.codec} / {pendingVersion.container} / {pendingVersion.source} / {pendingVersion.resolution}
-              {pendingVersion.scene ? ' / Scene' : ''}
-              {pendingVersion.remasterTitle ? ` / ${pendingVersion.remasterTitle}` : ''}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Seeders: {pendingVersion.seeders}, Snatched: {pendingVersion.snatched}, Size: {pendingVersion.sizeGB?.toFixed ? pendingVersion.sizeGB.toFixed(2) : pendingVersion.sizeGB} GB
-            </div>
-          </div>
-        )}
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -432,11 +513,13 @@ function DownloadPage() {
   return (
     <Card>
       <CardHeader>
-        <div className="font-medium">Download Started</div>
+        <CardTitle>Download initiated</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-4 text-muted-foreground">
-          {movieTitle ? `Download started for "${movieTitle}".` : 'Your download has been initiated successfully.'}
+        <p className="mb-4 text-sm text-muted-foreground">
+          {movieTitle
+            ? `Download started for "${movieTitle}". Feel free to queue up another search.`
+            : 'Your download has been initiated successfully. Start another search to keep the queue going.'}
         </p>
         <Button onClick={() => navigate('/search')}>Start another search</Button>
       </CardContent>
