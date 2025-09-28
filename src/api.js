@@ -33,10 +33,11 @@ export async function getTopMovies() {
   return res.json(); // { movies }
 }
 
-export async function getVersions(id) {
+export async function getVersions(id, title = '') {
   const token = getToken();
   const url = new URL(API_BASE + '/getVersions');
   url.searchParams.set('id', id);
+  url.searchParams.set('title', title ?? '');
   url.searchParams.set('token', token);
   const res = await fetch(url.toString());
   if (!res.ok) {

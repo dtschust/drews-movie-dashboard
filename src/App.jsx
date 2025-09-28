@@ -408,7 +408,7 @@ function VersionsPage({ setError }) {
       setLoading(true);
       setError('');
       try {
-        const { versions: list } = await getVersions(movieId);
+        const { versions: list } = await getVersions(movieId, titleParam);
         if (!cancelled) {
           setVersions(list || []);
         }
@@ -426,7 +426,7 @@ function VersionsPage({ setError }) {
     return () => {
       cancelled = true;
     };
-  }, [movieId, setError]);
+  }, [movieId, titleParam, setError]);
 
   const handleBack = () => {
     setError('');
