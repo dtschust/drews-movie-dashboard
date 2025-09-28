@@ -12,6 +12,8 @@ export function rememberMovies(movies) {
       year: movie.year ?? existing.year,
       imdbId: movie.imdbId || existing.imdbId,
       synopsis: existing.synopsis,
+      credits: existing.credits,
+      imdbDetailsFetched: existing.imdbDetailsFetched,
     });
   });
 }

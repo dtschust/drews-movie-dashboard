@@ -397,7 +397,8 @@ function VersionsPage({ setError }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingVersion, setPendingVersion] = useState(null);
   const [synopsis, setSynopsis] = useState('');
-  const [synopsisLoading, setSynopsisLoading] = useState(false);
+  const [credits, setCredits] = useState({ writers: [], directors: [], stars: [] });
+  const [imdbLoading, setImdbLoading] = useState(false);
   const navigate = useNavigate();
 
   const cachedMovie = movieCache.get(String(movieId));
@@ -408,75 +409,224 @@ function VersionsPage({ setError }) {
   }, [titleParam]);
 
   useEffect(() => {
-    if (cachedMovie?.synopsis) {
-      setSynopsis(cachedMovie.synopsis);
-      setSynopsisLoading(false);
+    if (cachedMovie) {
+      setSynopsis(cachedMovie.synopsis || '');
+      setCredits(cachedMovie.credits || { writers: [], directors: [], stars: [] });
+      setImdbLoading(false);
       return;
     }
     setSynopsis('');
-    setSynopsisLoading(false);
-  }, [cachedMovie?.synopsis, movieId]);
+    setCredits({ writers: [], directors: [], stars: [] });
+    setImdbLoading(false);
+  }, [cachedMovie, movieId]);
 
   useEffect(() => {
-    if (!cachedMovie?.imdbId || cachedMovie?.synopsis) return;
+    if (!cachedMovie?.imdbId) return;
+
+    const cachedSynopsis = cachedMovie.synopsis;
+    const cachedCredits = cachedMovie.credits || { writers: [], directors: [], stars: [] };
+    const hasCachedCredits = Object.values(cachedCredits).some(
+      (list) => Array.isArray(list) && list.length > 0,
+    );
+
+    if (cachedMovie.imdbDetailsFetched && (cachedSynopsis || hasCachedCredits)) {
+      return;
+    }
 
     let cancelled = false;
 
-    async function fetchSynopsis() {
-      setSynopsisLoading(true);
+    const toSynopsisString = (value) => {
+      if (!value) return '';
+      if (typeof value === 'string') return value.trim();
+      if (Array.isArray(value)) {
+        return value.map((entry) => toSynopsisString(entry)).find(Boolean) || '';
+      }
+      if (typeof value === 'object') {
+        const fromText =
+          (typeof value.text === 'string' && value.text.trim()) ||
+          (typeof value.synopsis === 'string' && value.synopsis.trim()) ||
+          (typeof value.summary === 'string' && value.summary.trim()) ||
+          (typeof value.plot === 'string' && value.plot.trim());
+        return fromText || '';
+      }
+      return '';
+    };
+
+    const getImageUrl = (source) => {
+      if (!source) return '';
+      if (typeof source === 'string') return source.trim();
+      if (typeof source === 'object') {
+        const candidates = [
+          source.url,
+          source.src,
+          source.href,
+          source.imageUrl,
+          source.value,
+          source.link,
+          source.path,
+        ];
+        const found = candidates.find((value) => typeof value === 'string' && value.trim());
+        if (found) {
+          return found.trim();
+        }
+      }
+      return '';
+    };
+
+    const normalizePerson = (entry) => {
+      if (!entry) return null;
+      if (typeof entry === 'string') {
+        const text = entry.trim();
+        if (!text) return null;
+        return { id: text, name: text, image: '' };
+      }
+      if (typeof entry === 'object') {
+        const nameCandidate =
+          entry.name ||
+          entry.title ||
+          entry.fullName ||
+          entry.originalName ||
+          entry.displayName ||
+          entry.role ||
+          entry.character;
+        const name = typeof nameCandidate === 'string' ? nameCandidate.trim() : '';
+        if (!name) return null;
+        const idCandidate =
+          entry.id ||
+          entry.imdbId ||
+          entry.imdb_id ||
+          entry.nconst ||
+          entry.personId ||
+          entry.const ||
+          name;
+        const imageCandidate =
+          getImageUrl(entry.image) ||
+          getImageUrl(entry.photo) ||
+          getImageUrl(entry.thumbnail) ||
+          getImageUrl(entry.avatar) ||
+          getImageUrl(entry.headshot) ||
+          getImageUrl(entry.primaryImage) ||
+          getImageUrl(entry.profileImage) ||
+          getImageUrl(entry.poster);
+        return {
+          id: String(idCandidate),
+          name,
+          image: imageCandidate,
+        };
+      }
+      return null;
+    };
+
+    const toPeopleArray = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) {
+        return value.map((item) => normalizePerson(item)).filter(Boolean);
+      }
+      if (typeof value === 'object') {
+        if (Array.isArray(value.items)) return toPeopleArray(value.items);
+        if (Array.isArray(value.list)) return toPeopleArray(value.list);
+        if (Array.isArray(value.values)) return toPeopleArray(value.values);
+        if (Array.isArray(value.results)) return toPeopleArray(value.results);
+        if (Array.isArray(value.people)) return toPeopleArray(value.people);
+        const single = normalizePerson(value);
+        return single ? [single] : [];
+      }
+      if (typeof value === 'string') {
+        return value
+          .split(/,|&|\band\b/gi)
+          .map((piece) => piece.trim())
+          .filter(Boolean)
+          .map((name) => ({ id: name, name, image: '' }));
+      }
+      return [];
+    };
+
+    const mergePeople = (...sources) => {
+      const seen = new Map();
+      sources.forEach((source) => {
+        toPeopleArray(source).forEach((person) => {
+          const key = person.id || person.name;
+          if (!seen.has(key)) {
+            seen.set(key, person);
+          }
+        });
+      });
+      return Array.from(seen.values());
+    };
+
+    async function fetchImdbDetails() {
+      setImdbLoading(true);
       try {
         const data = await getImdbDetails(cachedMovie.imdbId);
         if (cancelled) return;
 
-        const synopsisCandidates = [
-          data?.synopsis,
-          data?.plot,
-          data?.plotSummary,
-          data?.short,
-        ];
+        const synopsisCandidates = [data?.synopsis, data?.plot, data?.plotSummary, data?.short];
+        const nextSynopsis =
+          synopsisCandidates.map((entry) => toSynopsisString(entry)).find((entry) => Boolean(entry)) || '';
 
-        const toSynopsisString = (value) => {
-          if (!value) return '';
-          if (typeof value === 'string') return value.trim();
-          if (Array.isArray(value)) {
-            return value.map((entry) => toSynopsisString(entry)).find(Boolean) || '';
-          }
-          if (typeof value === 'object') {
-            const fromText =
-              (typeof value.text === 'string' && value.text.trim()) ||
-              (typeof value.synopsis === 'string' && value.synopsis.trim()) ||
-              (typeof value.summary === 'string' && value.summary.trim());
-            return fromText || '';
-          }
-          return '';
+        const nextCredits = {
+          writers: mergePeople(
+            data?.credits?.writers,
+            data?.credits?.writing,
+            data?.credits?.writer,
+            data?.writers,
+            data?.writer,
+            data?.writerList,
+          ),
+          directors: mergePeople(
+            data?.credits?.directors,
+            data?.credits?.direction,
+            data?.credits?.director,
+            data?.directors,
+            data?.director,
+            data?.creators,
+            data?.creatorList,
+          ),
+          stars: mergePeople(
+            data?.credits?.stars,
+            data?.credits?.cast,
+            data?.credits?.actors,
+            data?.stars,
+            data?.cast,
+            data?.actors,
+            data?.principalCast,
+          ),
         };
 
-        const nextSynopsis = synopsisCandidates
-          .map((entry) => toSynopsisString(entry))
-          .find((entry) => Boolean(entry));
-        if (nextSynopsis) {
-          const cleanSynopsis = nextSynopsis.trim();
-          setSynopsis(cleanSynopsis);
-          const existing = movieCache.get(String(movieId)) || {};
-          movieCache.set(String(movieId), {
-            ...existing,
-            imdbId: existing.imdbId || cachedMovie.imdbId,
-            synopsis: cleanSynopsis,
-          });
+        const cleanSynopsis = nextSynopsis.trim();
+        const mergedCredits = {
+          writers: nextCredits.writers.length ? nextCredits.writers : cachedCredits.writers || [],
+          directors: nextCredits.directors.length ? nextCredits.directors : cachedCredits.directors || [],
+          stars: nextCredits.stars.length ? nextCredits.stars : cachedCredits.stars || [],
+        };
+
+        if (cleanSynopsis || cachedSynopsis) {
+          setSynopsis(cleanSynopsis || cachedSynopsis || '');
         }
+
+        setCredits(mergedCredits);
+
+        const existing = movieCache.get(String(movieId)) || {};
+        movieCache.set(String(movieId), {
+          ...existing,
+          imdbId: existing.imdbId || cachedMovie.imdbId,
+          synopsis: cleanSynopsis || existing.synopsis || cachedSynopsis || '',
+          credits: mergedCredits,
+          imdbDetailsFetched: true,
+        });
       } catch (error) {
         console.error('Failed to load IMDb details', error);
       } finally {
-        if (!cancelled) setSynopsisLoading(false);
+        if (!cancelled) setImdbLoading(false);
       }
     }
 
-    fetchSynopsis();
+    fetchImdbDetails();
 
     return () => {
       cancelled = true;
     };
-  }, [cachedMovie?.imdbId, cachedMovie?.synopsis, movieId]);
+  }, [cachedMovie?.imdbDetailsFetched, cachedMovie?.imdbId, cachedMovie?.synopsis, cachedMovie?.credits, movieId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -546,6 +696,49 @@ function VersionsPage({ setError }) {
     }
   };
 
+  const hasCredits = Boolean(
+    (credits.directors && credits.directors.length) ||
+      (credits.writers && credits.writers.length) ||
+      (credits.stars && credits.stars.length),
+  );
+
+  const renderPeopleGroup = (label, people) => {
+    if (!Array.isArray(people) || people.length === 0) return null;
+    return (
+      <div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </div>
+        <ul className="flex flex-wrap gap-3">
+          {people.map((person, index) => {
+            const displayName = person.name || person.id;
+            const placeholder = displayName ? displayName.charAt(0).toUpperCase() : '?';
+            const key = person.id || `${displayName}-${index}`;
+            return (
+              <li
+                key={key}
+                className="flex min-w-[180px] items-center gap-3 rounded-md border border-border/70 bg-card/70 px-3 py-2"
+              >
+                {person.image ? (
+                  <img
+                    src={person.image}
+                    alt={displayName}
+                    className="h-12 w-12 flex-none rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+                    {placeholder}
+                  </div>
+                )}
+                <span className="text-sm font-medium text-foreground">{displayName}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -573,9 +766,38 @@ function VersionsPage({ setError }) {
                 ) : null}
               </div>
             </div>
-            {(synopsisLoading || synopsis) && (
-              <div className="max-w-xl text-sm text-muted-foreground">
-                {synopsisLoading ? 'Fetching synopsis...' : synopsis}
+            {(imdbLoading || synopsis || hasCredits) && (
+              <div className="space-y-3 text-sm text-muted-foreground">
+                {synopsis ? (
+                  <div className="max-w-xl leading-relaxed">{synopsis}</div>
+                ) : imdbLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Spinner />
+                    <span>Fetching synopsis...</span>
+                  </div>
+                ) : null}
+                {(hasCredits || imdbLoading) && (
+                  <details className="overflow-hidden rounded-md border border-border/80 bg-card/60 text-foreground">
+                    <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-semibold">
+                      <span>Cast &amp; crew</span>
+                      {imdbLoading ? <Spinner /> : null}
+                    </summary>
+                    <div className="space-y-4 border-t border-border/60 px-3 py-3 text-sm text-muted-foreground">
+                      {imdbLoading && !hasCredits ? (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Spinner />
+                          <span>Loading credits...</span>
+                        </div>
+                      ) : null}
+                      {renderPeopleGroup('Directors', credits.directors)}
+                      {renderPeopleGroup('Writers', credits.writers)}
+                      {renderPeopleGroup('Stars', credits.stars)}
+                      {!imdbLoading && !hasCredits ? (
+                        <div className="text-xs text-muted-foreground">No additional credits available.</div>
+                      ) : null}
+                    </div>
+                  </details>
+                )}
               </div>
             )}
           </div>
