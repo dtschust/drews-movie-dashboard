@@ -8,7 +8,7 @@ import {
   useParams,
   useLocation,
 } from 'react-router-dom';
-import { searchMovies, getVersions, downloadMovie, getTopMovies } from './api.js';
+import { searchMovies, getVersions, downloadMovie, getTopMovies, getImdbDetails } from './api.js';
 import './index.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -396,6 +396,8 @@ function VersionsPage({ setError }) {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingVersion, setPendingVersion] = useState(null);
+  const [synopsis, setSynopsis] = useState('');
+  const [synopsisLoading, setSynopsisLoading] = useState(false);
   const navigate = useNavigate();
 
   const cachedMovie = movieCache.get(String(movieId));
@@ -404,6 +406,77 @@ function VersionsPage({ setError }) {
   useEffect(() => {
     setMovieTitle(titleParam);
   }, [titleParam]);
+
+  useEffect(() => {
+    if (cachedMovie?.synopsis) {
+      setSynopsis(cachedMovie.synopsis);
+      setSynopsisLoading(false);
+      return;
+    }
+    setSynopsis('');
+    setSynopsisLoading(false);
+  }, [cachedMovie?.synopsis, movieId]);
+
+  useEffect(() => {
+    if (!cachedMovie?.imdbId || cachedMovie?.synopsis) return;
+
+    let cancelled = false;
+
+    async function fetchSynopsis() {
+      setSynopsisLoading(true);
+      try {
+        const data = await getImdbDetails(cachedMovie.imdbId);
+        if (cancelled) return;
+
+        const synopsisCandidates = [
+          data?.synopsis,
+          data?.plot,
+          data?.plotSummary,
+          data?.short,
+        ];
+
+        const toSynopsisString = (value) => {
+          if (!value) return '';
+          if (typeof value === 'string') return value.trim();
+          if (Array.isArray(value)) {
+            return value.map((entry) => toSynopsisString(entry)).find(Boolean) || '';
+          }
+          if (typeof value === 'object') {
+            const fromText =
+              (typeof value.text === 'string' && value.text.trim()) ||
+              (typeof value.synopsis === 'string' && value.synopsis.trim()) ||
+              (typeof value.summary === 'string' && value.summary.trim());
+            return fromText || '';
+          }
+          return '';
+        };
+
+        const nextSynopsis = synopsisCandidates
+          .map((entry) => toSynopsisString(entry))
+          .find((entry) => Boolean(entry));
+        if (nextSynopsis) {
+          const cleanSynopsis = nextSynopsis.trim();
+          setSynopsis(cleanSynopsis);
+          const existing = movieCache.get(String(movieId)) || {};
+          movieCache.set(String(movieId), {
+            ...existing,
+            imdbId: existing.imdbId || cachedMovie.imdbId,
+            synopsis: cleanSynopsis,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load IMDb details', error);
+      } finally {
+        if (!cancelled) setSynopsisLoading(false);
+      }
+    }
+
+    fetchSynopsis();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cachedMovie?.imdbId, cachedMovie?.synopsis, movieId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -477,27 +550,34 @@ function VersionsPage({ setError }) {
     <div>
       <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
         {cachedMovie && (cachedMovie.posterUrl || cachedMovie.title || cachedMovie.year) ? (
-          <div className="flex items-center gap-4">
-            {cachedMovie.posterUrl ? (
-              <div className="h-32 w-24 overflow-hidden rounded-md border border-border/80 bg-card">
-                <img
-                  src={cachedMovie.posterUrl}
-                  alt={cachedMovie.title || titleForDisplay}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            ) : null}
-            <div className="space-y-1">
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Versions for
-              </div>
-              <div className="text-lg font-semibold text-foreground">
-                {cachedMovie.title || titleForDisplay}
-              </div>
-              {cachedMovie.year ? (
-                <div className="text-xs text-muted-foreground">{cachedMovie.year}</div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex items-center gap-4">
+              {cachedMovie.posterUrl ? (
+                <div className="h-32 w-24 overflow-hidden rounded-md border border-border/80 bg-card">
+                  <img
+                    src={cachedMovie.posterUrl}
+                    alt={cachedMovie.title || titleForDisplay}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
               ) : null}
+              <div className="space-y-1">
+                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Versions for
+                </div>
+                <div className="text-lg font-semibold text-foreground">
+                  {cachedMovie.title || titleForDisplay}
+                </div>
+                {cachedMovie.year ? (
+                  <div className="text-xs text-muted-foreground">{cachedMovie.year}</div>
+                ) : null}
+              </div>
             </div>
+            {(synopsisLoading || synopsis) && (
+              <div className="max-w-xl text-sm text-muted-foreground">
+                {synopsisLoading ? 'Fetching synopsis...' : synopsis}
+              </div>
+            )}
           </div>
         ) : (
           <span className="text-sm font-medium text-muted-foreground">Versions for: {titleForDisplay}</span>

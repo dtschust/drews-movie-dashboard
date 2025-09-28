@@ -60,3 +60,17 @@ export async function downloadMovie({ torrentId, movieTitle }) {
   }
   return res.json(); // { ok, started }
 }
+
+export async function getImdbDetails(imdbId) {
+  if (!imdbId) {
+    throw new Error("Missing imdb id");
+  }
+
+  const url = new URL(`https://api.imdbapi.dev/titles/tt${imdbId}`);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Could not load IMDb details (${res.status})`);
+  }
+  return res.json();
+}

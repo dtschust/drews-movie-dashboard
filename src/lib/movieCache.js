@@ -4,10 +4,14 @@ export function rememberMovies(movies) {
   if (!Array.isArray(movies)) return;
   movies.forEach((movie) => {
     if (!movie || movie.id == null) return;
-    movieCache.set(String(movie.id), {
-      posterUrl: movie.posterUrl,
-      title: movie.title,
-      year: movie.year,
+    const cacheKey = String(movie.id);
+    const existing = movieCache.get(cacheKey) || {};
+    movieCache.set(cacheKey, {
+      posterUrl: movie.posterUrl ?? existing.posterUrl,
+      title: movie.title ?? existing.title,
+      year: movie.year ?? existing.year,
+      imdbId: movie.imdbId || existing.imdbId,
+      synopsis: existing.synopsis,
     });
   });
 }
