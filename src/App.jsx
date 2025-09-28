@@ -323,7 +323,9 @@ function SearchPage({ topMovies, setError }) {
   const handleTopMovie = async (movie) => {
     const params = new URLSearchParams();
     if (movie.title) {
-      await searchMovies(movie.title);
+      const { movies: list } = await searchMovies(movie.title);
+      const nextMovies = Array.isArray(list) ? list : [];
+      rememberMovies(nextMovies);
       params.set('title', movie.title);
       params.set('query', movie.title);
     }
