@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/Spinner.jsx';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react';
 import { movieCache, rememberMovies } from '@/lib/movieCache.js';
 
 function useLocalToken() {
@@ -399,6 +399,7 @@ function VersionsPage({ setError }) {
   const [synopsis, setSynopsis] = useState('');
   const [credits, setCredits] = useState({ writers: [], directors: [], stars: [] });
   const [imdbLoading, setImdbLoading] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const navigate = useNavigate();
 
   const cachedMovie = movieCache.get(String(movieId));
@@ -407,6 +408,10 @@ function VersionsPage({ setError }) {
   useEffect(() => {
     setMovieTitle(titleParam);
   }, [titleParam]);
+
+  useEffect(() => {
+    setCreditsOpen(false);
+  }, [movieId]);
 
   useEffect(() => {
     if (cachedMovie) {
@@ -741,64 +746,76 @@ function VersionsPage({ setError }) {
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4">
         {cachedMovie && (cachedMovie.posterUrl || cachedMovie.title || cachedMovie.year) ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex items-center gap-4">
-              {cachedMovie.posterUrl ? (
-                <div className="h-32 w-24 overflow-hidden rounded-md border border-border/80 bg-card">
-                  <img
-                    src={cachedMovie.posterUrl}
-                    alt={cachedMovie.title || titleForDisplay}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              ) : null}
-              <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  Versions for
-                </div>
-                <div className="text-lg font-semibold text-foreground">
-                  {cachedMovie.title || titleForDisplay}
-                </div>
-                {cachedMovie.year ? (
-                  <div className="text-xs text-muted-foreground">{cachedMovie.year}</div>
-                ) : null}
-              </div>
-            </div>
-            {(imdbLoading || synopsis || hasCredits) && (
-              <div className="space-y-3 text-sm text-muted-foreground">
-                {synopsis ? (
-                  <div className="max-w-xl leading-relaxed">{synopsis}</div>
-                ) : imdbLoading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Spinner />
-                    <span>Fetching synopsis...</span>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="flex items-center gap-4">
+                {cachedMovie.posterUrl ? (
+                  <div className="h-32 w-24 overflow-hidden rounded-md border border-border/80 bg-card">
+                    <img
+                      src={cachedMovie.posterUrl}
+                      alt={cachedMovie.title || titleForDisplay}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                 ) : null}
-                {(hasCredits || imdbLoading) && (
-                  <details className="overflow-hidden rounded-md border border-border/80 bg-card/60 text-foreground">
-                    <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-semibold">
-                      <span>Cast &amp; crew</span>
-                      {imdbLoading ? <Spinner /> : null}
-                    </summary>
-                    <div className="space-y-4 border-t border-border/60 px-3 py-3 text-sm text-muted-foreground">
-                      {imdbLoading && !hasCredits ? (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Spinner />
-                          <span>Loading credits...</span>
-                        </div>
-                      ) : null}
-                      {renderPeopleGroup('Directors', credits.directors)}
-                      {renderPeopleGroup('Writers', credits.writers)}
-                      {renderPeopleGroup('Stars', credits.stars)}
-                      {!imdbLoading && !hasCredits ? (
-                        <div className="text-xs text-muted-foreground">No additional credits available.</div>
-                      ) : null}
-                    </div>
-                  </details>
-                )}
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Versions for
+                  </div>
+                  <div className="text-lg font-semibold text-foreground">
+                    {cachedMovie.title || titleForDisplay}
+                  </div>
+                  {cachedMovie.year ? (
+                    <div className="text-xs text-muted-foreground">{cachedMovie.year}</div>
+                  ) : null}
+                </div>
               </div>
+              {(imdbLoading || synopsis) && (
+                <div className="space-y-3 text-sm text-muted-foreground sm:max-w-xl">
+                  {synopsis ? (
+                    <div className="leading-relaxed">{synopsis}</div>
+                  ) : imdbLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Spinner />
+                      <span>Fetching synopsis...</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            {(hasCredits || imdbLoading) && (
+              <details
+                className="overflow-hidden rounded-md border border-border/80 bg-card/60 text-foreground"
+                onToggle={(event) => setCreditsOpen(event.currentTarget.open)}
+              >
+                <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-semibold">
+                  <span className="flex items-center gap-2">
+                    {creditsOpen ? (
+                      <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    <span>Cast &amp; Crew</span>
+                  </span>
+                  {imdbLoading ? <Spinner /> : null}
+                </summary>
+                <div className="space-y-4 border-t border-border/60 px-3 py-3 text-sm text-muted-foreground">
+                  {imdbLoading && !hasCredits ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Spinner />
+                      <span>Loading credits...</span>
+                    </div>
+                  ) : null}
+                  {renderPeopleGroup('Directors', credits.directors)}
+                  {renderPeopleGroup('Writers', credits.writers)}
+                  {renderPeopleGroup('Stars', credits.stars)}
+                  {!imdbLoading && !hasCredits ? (
+                    <div className="text-xs text-muted-foreground">No additional credits available.</div>
+                  ) : null}
+                </div>
+              </details>
             )}
           </div>
         ) : (
