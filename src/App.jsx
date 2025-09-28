@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/Spinner.jsx';
 import { Moon, Sun } from 'lucide-react';
+import { movieCache, rememberMovies } from '@/lib/movieCache.js';
 
 function useLocalToken() {
   const [token, setToken] = useState('');
@@ -264,7 +265,9 @@ function SearchPage({ topMovies, setError }) {
       try {
         const { movies: list } = await searchMovies(queryParam.trim());
         if (!cancelled) {
-          setMovies(list || []);
+          const nextMovies = Array.isArray(list) ? list : [];
+          rememberMovies(nextMovies);
+          setMovies(nextMovies);
           setHasSearched(true);
         }
       } catch (e) {
@@ -395,7 +398,8 @@ function VersionsPage({ setError }) {
   const [pendingVersion, setPendingVersion] = useState(null);
   const navigate = useNavigate();
 
-  const titleForDisplay = movieTitle || `Movie ${movieId}`;
+  const cachedMovie = movieCache.get(String(movieId));
+  const titleForDisplay = movieTitle || cachedMovie?.title || `Movie ${movieId}`;
 
   useEffect(() => {
     setMovieTitle(titleParam);
@@ -455,7 +459,11 @@ function VersionsPage({ setError }) {
       setPendingVersion(null);
       const params = new URLSearchParams();
       params.set('movieId', movieId);
-      if (movieTitle) params.set('title', movieTitle);
+      if (movieTitle) {
+        params.set('title', movieTitle);
+      } else if (cachedMovie?.title) {
+        params.set('title', cachedMovie.title);
+      }
       navigate(`/download?${params.toString()}`);
     } catch (e) {
       console.error(e);
@@ -467,8 +475,33 @@ function VersionsPage({ setError }) {
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 text-sm font-medium text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <span>Versions for: {titleForDisplay}</span>
+      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+        {cachedMovie && (cachedMovie.posterUrl || cachedMovie.title || cachedMovie.year) ? (
+          <div className="flex items-center gap-4">
+            {cachedMovie.posterUrl ? (
+              <div className="h-32 w-24 overflow-hidden rounded-md border border-border/80 bg-card">
+                <img
+                  src={cachedMovie.posterUrl}
+                  alt={cachedMovie.title || titleForDisplay}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : null}
+            <div className="space-y-1">
+              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Versions for
+              </div>
+              <div className="text-lg font-semibold text-foreground">
+                {cachedMovie.title || titleForDisplay}
+              </div>
+              {cachedMovie.year ? (
+                <div className="text-xs text-muted-foreground">{cachedMovie.year}</div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm font-medium text-muted-foreground">Versions for: {titleForDisplay}</span>
+        )}
       </div>
 
       {loading ? (
@@ -497,7 +530,7 @@ function VersionsPage({ setError }) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{movieTitle ? `Confirm download — ${movieTitle}` : 'Confirm download'}</DialogTitle>
+            <DialogTitle>{titleForDisplay ? `Confirm download — ${titleForDisplay}` : 'Confirm download'}</DialogTitle>
             <DialogDescription>
               Review this release before starting the download.
             </DialogDescription>
@@ -639,7 +672,9 @@ export default function App() {
       try {
         const { movies: list } = await getTopMovies();
         if (!cancelled) {
-          setTopMovies(list || []);
+          const nextTop = Array.isArray(list) ? list : [];
+          rememberMovies(nextTop);
+          setTopMovies(nextTop);
         }
       } catch (e) {
         if (!cancelled) {
