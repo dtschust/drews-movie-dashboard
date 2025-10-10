@@ -10,17 +10,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const normalizedFlag = env.IS_EMBEDDED?.toLowerCase();
   const envIsEmbedded =
-    normalizedFlag === 'true' ||
-    normalizedFlag === '1' ||
-    normalizedFlag === 'yes'
+    normalizedFlag === 'true' || normalizedFlag === '1' || normalizedFlag === 'yes'
       ? true
-      : normalizedFlag === 'false' ||
-        normalizedFlag === '0' ||
-        normalizedFlag === 'no'
-      ? false
-      : undefined;
-  const modeIsEmbedded =
-    mode === 'embedded' ? true : mode === 'web' ? false : undefined;
+      : normalizedFlag === 'false' || normalizedFlag === '0' || normalizedFlag === 'no'
+        ? false
+        : undefined;
+  const modeIsEmbedded = mode === 'embedded' ? true : mode === 'web' ? false : undefined;
   const isEmbedded = modeIsEmbedded ?? envIsEmbedded ?? false;
 
   const plugins = [react()];
