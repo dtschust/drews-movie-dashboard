@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist -b gh-pages"
+    "deploy": "gh-pages -d dist -b gh-pages",
+    "start-server": "tsx src/server/mcp-server.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +24,7 @@
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.13",
+    "tsx": "^4.20.6",
     "vite": "^7.1.4",
     "vite-plugin-singlefile": "^2.3.0"
   },

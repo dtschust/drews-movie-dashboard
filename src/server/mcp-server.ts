@@ -3,7 +3,8 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
+import path from "node:path";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
@@ -24,9 +25,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { readFileSync } from "node:fs";
-const path = require("node:path");
 
 // Load locally built assets (produced by your component build)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const MOVIE_DASHBOARD_HTML = readFileSync(
   path.resolve(__dirname, "../../dist/index.html"),
   "utf8"
@@ -49,6 +51,14 @@ function widgetMeta(widget: MovieDashboardWidget) {
     "openai/toolInvocation/invoked": widget.invoked,
     "openai/widgetAccessible": true,
     "openai/resultCanProduceWidget": true,
+    "openai/widgetCSP": {
+      connect_domains: ["https://tools.drew.shoes", "https://api.imdbapi.dev"],
+      resource_domains: [
+        "https://persistent.oaistatic.com",
+        "ptpimg.me",
+        "https://m.media-amazon.com",
+      ],
+    },
   } as const;
 }
 
