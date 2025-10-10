@@ -56,7 +56,10 @@ export async function getVersions(id: string | number, title = ''): Promise<Vers
   return (await res.json()) as VersionsResponse;
 }
 
-export async function downloadMovie({ torrentId, movieTitle }: DownloadRequest): Promise<DownloadResponse> {
+export async function downloadMovie({
+  torrentId,
+  movieTitle,
+}: DownloadRequest): Promise<DownloadResponse> {
   const token = getToken();
   const res = await fetch(API_BASE + '/downloadMovie', {
     method: 'POST',

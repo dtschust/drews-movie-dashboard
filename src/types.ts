@@ -34,7 +34,10 @@ export interface MovieCacheEntry {
   imdbDetailsFetched?: boolean;
 }
 
-export type NumericDisplayValue = number | string | { toFixed: (fractionDigits?: number) => string };
+export type NumericDisplayValue =
+  | number
+  | string
+  | { toFixed: (fractionDigits?: number) => string };
 
 export interface MovieVersion {
   id: string | number;

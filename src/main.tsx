@@ -54,5 +54,5 @@ root.render(
         <App />
       </EmbeddedAppProvider>
     </HashRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
