@@ -14,7 +14,6 @@ export default defineConfig({
     },
   },
   build: {
-    cssCodeSplit: false,
     rollupOptions: {
       output: {
         format: 'es',
