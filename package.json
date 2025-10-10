@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist -b gh-pages",
-    "start-server": "tsx src/server/mcp-server.ts"
+    "start-server": "npm run build && tsx src/server/mcp-server.ts"
   },
   "keywords": [],
   "author": "",
