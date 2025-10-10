@@ -25,6 +25,7 @@ import {
 import { Spinner } from '@/components/Spinner.jsx';
 import { Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react';
 import { movieCache, rememberMovies } from '@/lib/movieCache.js';
+import { useEmbeddedAppContext } from './context/EmbeddedAppContext.jsx';
 
 function useLocalToken() {
   const [token, setToken] = useState('');
@@ -907,6 +908,7 @@ function DownloadPage() {
 }
 
 export default function App() {
+  const { isEmbeddedApp } = useEmbeddedAppContext();
   const navigate = useNavigate();
   const { token, saveToken, clearToken } = useLocalToken();
   const [topMovies, setTopMovies] = useState([]);
