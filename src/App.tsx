@@ -29,6 +29,16 @@ import { movieCache, rememberMovies } from '@/lib/movieCache';
 import { useEmbeddedAppContext } from './context/EmbeddedAppContext';
 import type { MovieCacheEntry, MovieCredits, MoviePerson, MovieSummary, MovieVersion, Theme } from './types';
 
+const toErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return 'Something went wrong';
+  }
+};
+
 interface LocalTokenState {
   token: string;
   saveToken: (token: string) => void;
@@ -324,10 +334,10 @@ function SearchPage({ topMovies, setError }: SearchPageProps) {
           setMovies(nextMovies);
           setHasSearched(true);
         }
-      } catch (e) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          console.error(e);
-          setError(String(e.message || e));
+          console.error(error);
+          setError(toErrorMessage(error));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -487,7 +497,10 @@ function VersionsPage({ setError }: VersionsPageProps) {
   }, [cachedMovie, movieId]);
 
   useEffect(() => {
-    if (!cachedMovie?.imdbId) return;
+    if (!cachedMovie) return;
+    const imdbIdRaw = cachedMovie.imdbId;
+    if (!imdbIdRaw) return;
+    const imdbId = String(imdbIdRaw);
 
     const cachedSynopsis = cachedMovie.synopsis;
     const cachedCredits = cachedMovie.credits ?? createEmptyCredits();
@@ -501,6 +514,9 @@ function VersionsPage({ setError }: VersionsPageProps) {
 
     let cancelled = false;
 
+    const isNonEmptyString = (value: unknown): value is string =>
+      typeof value === 'string' && value.trim().length > 0;
+
     const toSynopsisString = (value: unknown): string => {
       if (!value) return '';
       if (typeof value === 'string') return value.trim();
@@ -511,7 +527,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
         const record = value as Record<string, unknown>;
         const candidates = [record.text, record.synopsis, record.summary, record.plot];
         const found = candidates
-          .filter((candidate): candidate is string => typeof candidate === 'string')
+          .filter((candidate): candidate is string => isNonEmptyString(candidate))
           .map((candidate) => candidate.trim())
           .find(Boolean);
         return found || '';
@@ -533,9 +549,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
           record.link,
           record.path,
         ];
-        const found = candidates.find(
-          (value): value is string => typeof value === 'string' && value.trim(),
-        );
+        const found = candidates.find((value): value is string => isNonEmptyString(value));
         if (found) {
           return found.trim();
         }
@@ -561,7 +575,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
           record.role,
           record.character,
         ]
-          .filter((value): value is string => typeof value === 'string' && value.trim())
+          .filter((value): value is string => isNonEmptyString(value))
           .map((value) => value.trim())
           .find(Boolean);
         if (!nameCandidate) return null;
@@ -573,7 +587,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
             record.nconst,
             record.personId,
             record.const,
-          ].find((value) => typeof value === 'string' && value) ?? nameCandidate;
+          ].find((value) => isNonEmptyString(value)) ?? nameCandidate;
         const imageCandidate =
           getImageUrl(record.image) ||
           getImageUrl(record.photo) ||
@@ -635,7 +649,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
     async function fetchImdbDetails() {
       setImdbLoading(true);
       try {
-        const data = await getImdbDetails(cachedMovie.imdbId);
+        const data = await getImdbDetails(imdbId);
         if (cancelled) return;
 
         const synopsisCandidates = [data?.synopsis, data?.plot, data?.plotSummary, data?.short];
@@ -687,13 +701,13 @@ function VersionsPage({ setError }: VersionsPageProps) {
         const existing: MovieCacheEntry = movieCache.get(String(movieId)) ?? {};
         const nextEntry: MovieCacheEntry = {
           ...existing,
-          imdbId: existing.imdbId ?? cachedMovie.imdbId,
+          imdbId: existing.imdbId ?? imdbId,
           synopsis: cleanSynopsis || existing.synopsis || cachedSynopsis || '',
           credits: mergedCredits,
           imdbDetailsFetched: true,
         };
         movieCache.set(String(movieId), nextEntry);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to load IMDb details', error);
       } finally {
         if (!cancelled) setImdbLoading(false);
@@ -705,7 +719,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [cachedMovie?.imdbDetailsFetched, cachedMovie?.imdbId, cachedMovie?.synopsis, cachedMovie?.credits, movieId]);
+  }, [cachedMovie, movieId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -719,10 +733,10 @@ function VersionsPage({ setError }: VersionsPageProps) {
           const nextVersions = Array.isArray(list) ? list : [];
           setVersions(nextVersions);
         }
-      } catch (e) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          console.error(e);
-          setError(String(e.message || e));
+          console.error(error);
+          setError(toErrorMessage(error));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -768,9 +782,9 @@ function VersionsPage({ setError }: VersionsPageProps) {
         params.set('title', cachedMovie.title);
       }
       navigate(`/download?${params.toString()}`);
-    } catch (e) {
-      console.error(e);
-      setError(String(e.message || e));
+    } catch (error: unknown) {
+      console.error(error);
+      setError(toErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -782,7 +796,7 @@ function VersionsPage({ setError }: VersionsPageProps) {
       (credits.stars && credits.stars.length),
   );
 
-  const renderPeopleGroup = (label: string, people: MoviePerson[]): JSX.Element | null => {
+  const renderPeopleGroup = (label: string, people: MoviePerson[]): ReactNode => {
     if (!Array.isArray(people) || people.length === 0) return null;
     return (
       <div>
@@ -1076,10 +1090,10 @@ export default function App() {
           rememberMovies(nextTop);
           setTopMovies(nextTop);
         }
-      } catch (e) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          console.error(e);
-          setError(String(e.message || e));
+          console.error(error);
+          setError(toErrorMessage(error));
         }
       }
     }
