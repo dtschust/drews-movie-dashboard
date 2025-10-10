@@ -1,8 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
-import App from './App.jsx';
-import { EmbeddedAppProvider } from './context/EmbeddedAppContext.jsx';
+import App from './App';
+import { EmbeddedAppProvider } from './context/EmbeddedAppContext';
 
 if (typeof document !== 'undefined') {
   try {
@@ -41,7 +41,12 @@ const isEmbeddedApp =
     ? ['true', '1'].includes(rawIsEmbedded.toLowerCase())
     : Boolean(rawIsEmbedded);
 
-const root = createRoot(document.getElementById('drews-movie-dashboard-root'));
+const container = document.getElementById('drews-movie-dashboard-root');
+if (!container) {
+  throw new Error('Could not find root element with id "drews-movie-dashboard-root"');
+}
+
+const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <HashRouter>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import {
   Routes,
   Route,
@@ -8,7 +9,7 @@ import {
   useParams,
   useLocation,
 } from 'react-router-dom';
-import { searchMovies, getVersions, downloadMovie, getTopMovies, getImdbDetails } from './api.js';
+import { searchMovies, getVersions, downloadMovie, getTopMovies, getImdbDetails } from './api';
 import './index.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,13 +23,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Spinner } from '@/components/Spinner.jsx';
+import { Spinner } from '@/components/Spinner';
 import { Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react';
-import { movieCache, rememberMovies } from '@/lib/movieCache.js';
-import { useEmbeddedAppContext } from './context/EmbeddedAppContext.jsx';
+import { movieCache, rememberMovies } from '@/lib/movieCache';
+import { useEmbeddedAppContext } from './context/EmbeddedAppContext';
+import type { MovieCacheEntry, MovieCredits, MoviePerson, MovieSummary, MovieVersion, Theme } from './types';
 
-function useLocalToken() {
-  const [token, setToken] = useState('');
+interface LocalTokenState {
+  token: string;
+  saveToken: (token: string) => void;
+  clearToken: () => void;
+}
+
+function useLocalToken(): LocalTokenState {
+  const [token, setToken] = useState<string>('');
   useEffect(() => {
     try {
       setToken(localStorage.getItem('token') || '');
@@ -36,7 +44,7 @@ function useLocalToken() {
       /* noop */
     }
   }, []);
-  const saveToken = (t) => {
+  const saveToken = (t: string) => {
     try {
       localStorage.setItem('token', t);
     } catch {
@@ -55,9 +63,13 @@ function useLocalToken() {
   return { token, saveToken, clearToken };
 }
 
-function TokenGate({ onSaved }) {
-  const [value, setValue] = useState('');
-  const [error, setError] = useState('');
+interface TokenGateProps {
+  onSaved: (token: string) => void;
+}
+
+function TokenGate({ onSaved }: TokenGateProps) {
+  const [value, setValue] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const save = () => {
     if (!value.trim()) {
       setError('Please enter a token');
@@ -109,7 +121,12 @@ function TokenGate({ onSaved }) {
   );
 }
 
-function MovieCard({ movie, onClick }) {
+interface MovieCardProps {
+  movie: MovieSummary;
+  onClick: () => void;
+}
+
+function MovieCard({ movie, onClick }: MovieCardProps) {
   return (
     <Card
       className="flex h-full cursor-pointer flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lg"
@@ -119,7 +136,7 @@ function MovieCard({ movie, onClick }) {
         <div className="aspect-[2/3] w-full overflow-hidden">
           <img
             src={movie.posterUrl}
-            alt={movie.title}
+            alt={movie.title ?? 'Movie poster'}
             className="h-full w-full object-cover"
           />
         </div>
@@ -129,7 +146,7 @@ function MovieCard({ movie, onClick }) {
         </div>
       )}
       <CardContent className="px-4 py-3">
-        <div className="font-semibold" title={movie.title}>
+        <div className="font-semibold" title={movie.title ?? undefined}>
           {movie.title}
         </div>
         <div className="text-xs text-muted-foreground">
@@ -140,8 +157,14 @@ function MovieCard({ movie, onClick }) {
   );
 }
 
-function VersionRow({ v, onSelect }) {
+interface VersionRowProps {
+  v: MovieVersion;
+  onSelect: () => void;
+}
+
+function VersionRow({ v, onSelect }: VersionRowProps) {
   const line1 = `\n${v.quality} / ${v.codec} / ${v.container} / ${v.source} /\n${v.resolution}${v.scene ? ' / Scene' : ''}${v.remasterTitle ? ` / ${v.remasterTitle}` : ''}`;
+  const sizeLabel = formatSizeGb(v.sizeGB) || 'Unknown';
   return (
     <button
       type="button"
@@ -159,14 +182,39 @@ function VersionRow({ v, onSelect }) {
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <span>Seeders: {v.seeders}</span>
         <span>Snatched: {v.snatched}</span>
-        <span>Size: {v.sizeGB?.toFixed ? v.sizeGB.toFixed(2) : v.sizeGB} GB</span>
+        <span>Size: {sizeLabel} GB</span>
       </div>
     </button>
   );
 }
 
-function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children }) {
-  const [logoutOpen, setLogoutOpen] = useState(false);
+const createEmptyCredits = (): MovieCredits => ({
+  writers: [],
+  directors: [],
+  stars: [],
+});
+
+const formatSizeGb = (value: MovieVersion['sizeGB']): string => {
+  if (value == null) return '';
+  if (typeof value === 'number') return value.toFixed(2);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && 'toFixed' in value && typeof value.toFixed === 'function') {
+    return value.toFixed(2);
+  }
+  return String(value);
+};
+
+interface AppLayoutProps {
+  onLogout: () => void;
+  error: string;
+  onRestart: () => void;
+  onToggleTheme: () => void;
+  theme: Theme;
+  children: ReactNode;
+}
+
+function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children }: AppLayoutProps) {
+  const [logoutOpen, setLogoutOpen] = useState<boolean>(false);
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -235,13 +283,18 @@ function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children 
   );
 }
 
-function SearchPage({ topMovies, setError }) {
+interface SearchPageProps {
+  topMovies: MovieSummary[];
+  setError: Dispatch<SetStateAction<string>>;
+}
+
+function SearchPage({ topMovies, setError }: SearchPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get('query') || '';
-  const [inputValue, setInputValue] = useState(queryParam);
-  const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(Boolean(queryParam));
+  const [inputValue, setInputValue] = useState<string>(queryParam);
+  const [movies, setMovies] = useState<MovieSummary[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [hasSearched, setHasSearched] = useState<boolean>(Boolean(queryParam));
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -309,11 +362,11 @@ function SearchPage({ topMovies, setError }) {
     if (location.pathname !== '/search') {
       navigate('/search', { replace: true });
     } else {
-      setSearchParams({}, { replace: true });
+      setSearchParams(new URLSearchParams(), { replace: true });
     }
   };
 
-  const handleMovieClick = (movie) => {
+  const handleMovieClick = (movie: MovieSummary) => {
     const params = new URLSearchParams();
     if (movie.title) params.set('title', movie.title);
     const activeQuery = queryParam || inputValue.trim();
@@ -321,7 +374,7 @@ function SearchPage({ topMovies, setError }) {
     navigate(`/torrents/${movie.id}?${params.toString()}`);
   };
 
-  const handleTopMovie = async (movie) => {
+  const handleTopMovie = async (movie: MovieSummary) => {
     const params = new URLSearchParams();
     if (movie.title) {
       const { movies: list } = await searchMovies(movie.title);
@@ -389,23 +442,28 @@ function SearchPage({ topMovies, setError }) {
   );
 }
 
-function VersionsPage({ setError }) {
-  const { movieId } = useParams();
+interface VersionsPageProps {
+  setError: Dispatch<SetStateAction<string>>;
+}
+
+function VersionsPage({ setError }: VersionsPageProps) {
+  const params = useParams<{ movieId: string }>();
+  const movieId = params.movieId ?? '';
   const [searchParams] = useSearchParams();
   const titleParam = searchParams.get('title') || '';
   const originQuery = searchParams.get('query') || '';
-  const [movieTitle, setMovieTitle] = useState(titleParam);
-  const [versions, setVersions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingVersion, setPendingVersion] = useState(null);
-  const [synopsis, setSynopsis] = useState('');
-  const [credits, setCredits] = useState({ writers: [], directors: [], stars: [] });
-  const [imdbLoading, setImdbLoading] = useState(false);
-  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [movieTitle, setMovieTitle] = useState<string>(titleParam);
+  const [versions, setVersions] = useState<MovieVersion[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [pendingVersion, setPendingVersion] = useState<MovieVersion | null>(null);
+  const [synopsis, setSynopsis] = useState<string>('');
+  const [credits, setCredits] = useState<MovieCredits>(() => createEmptyCredits());
+  const [imdbLoading, setImdbLoading] = useState<boolean>(false);
+  const [creditsOpen, setCreditsOpen] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const cachedMovie = movieCache.get(String(movieId));
+  const cachedMovie: MovieCacheEntry | undefined = movieCache.get(String(movieId));
   const titleForDisplay = movieTitle || cachedMovie?.title || `Movie ${movieId}`;
 
   useEffect(() => {
@@ -419,12 +477,12 @@ function VersionsPage({ setError }) {
   useEffect(() => {
     if (cachedMovie) {
       setSynopsis(cachedMovie.synopsis || '');
-      setCredits(cachedMovie.credits || { writers: [], directors: [], stars: [] });
+      setCredits(cachedMovie.credits ?? createEmptyCredits());
       setImdbLoading(false);
       return;
     }
     setSynopsis('');
-    setCredits({ writers: [], directors: [], stars: [] });
+    setCredits(createEmptyCredits());
     setImdbLoading(false);
   }, [cachedMovie, movieId]);
 
@@ -432,7 +490,7 @@ function VersionsPage({ setError }) {
     if (!cachedMovie?.imdbId) return;
 
     const cachedSynopsis = cachedMovie.synopsis;
-    const cachedCredits = cachedMovie.credits || { writers: [], directors: [], stars: [] };
+    const cachedCredits = cachedMovie.credits ?? createEmptyCredits();
     const hasCachedCredits = Object.values(cachedCredits).some(
       (list) => Array.isArray(list) && list.length > 0,
     );
@@ -443,37 +501,41 @@ function VersionsPage({ setError }) {
 
     let cancelled = false;
 
-    const toSynopsisString = (value) => {
+    const toSynopsisString = (value: unknown): string => {
       if (!value) return '';
       if (typeof value === 'string') return value.trim();
       if (Array.isArray(value)) {
         return value.map((entry) => toSynopsisString(entry)).find(Boolean) || '';
       }
-      if (typeof value === 'object') {
-        const fromText =
-          (typeof value.text === 'string' && value.text.trim()) ||
-          (typeof value.synopsis === 'string' && value.synopsis.trim()) ||
-          (typeof value.summary === 'string' && value.summary.trim()) ||
-          (typeof value.plot === 'string' && value.plot.trim());
-        return fromText || '';
+      if (typeof value === 'object' && value !== null) {
+        const record = value as Record<string, unknown>;
+        const candidates = [record.text, record.synopsis, record.summary, record.plot];
+        const found = candidates
+          .filter((candidate): candidate is string => typeof candidate === 'string')
+          .map((candidate) => candidate.trim())
+          .find(Boolean);
+        return found || '';
       }
       return '';
     };
 
-    const getImageUrl = (source) => {
+    const getImageUrl = (source: unknown): string => {
       if (!source) return '';
       if (typeof source === 'string') return source.trim();
-      if (typeof source === 'object') {
+      if (typeof source === 'object' && source !== null) {
+        const record = source as Record<string, unknown>;
         const candidates = [
-          source.url,
-          source.src,
-          source.href,
-          source.imageUrl,
-          source.value,
-          source.link,
-          source.path,
+          record.url,
+          record.src,
+          record.href,
+          record.imageUrl,
+          record.value,
+          record.link,
+          record.path,
         ];
-        const found = candidates.find((value) => typeof value === 'string' && value.trim());
+        const found = candidates.find(
+          (value): value is string => typeof value === 'string' && value.trim(),
+        );
         if (found) {
           return found.trim();
         }
@@ -481,61 +543,70 @@ function VersionsPage({ setError }) {
       return '';
     };
 
-    const normalizePerson = (entry) => {
+    const normalizePerson = (entry: unknown): MoviePerson | null => {
       if (!entry) return null;
       if (typeof entry === 'string') {
         const text = entry.trim();
         if (!text) return null;
         return { id: text, name: text, image: '' };
       }
-      if (typeof entry === 'object') {
-        const nameCandidate =
-          entry.name ||
-          entry.title ||
-          entry.fullName ||
-          entry.originalName ||
-          entry.displayName ||
-          entry.role ||
-          entry.character;
-        const name = typeof nameCandidate === 'string' ? nameCandidate.trim() : '';
-        if (!name) return null;
+      if (typeof entry === 'object' && entry !== null) {
+        const record = entry as Record<string, unknown>;
+        const nameCandidate = [
+          record.name,
+          record.title,
+          record.fullName,
+          record.originalName,
+          record.displayName,
+          record.role,
+          record.character,
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.trim())
+          .map((value) => value.trim())
+          .find(Boolean);
+        if (!nameCandidate) return null;
         const idCandidate =
-          entry.id ||
-          entry.imdbId ||
-          entry.imdb_id ||
-          entry.nconst ||
-          entry.personId ||
-          entry.const ||
-          name;
+          [
+            record.id,
+            record.imdbId,
+            record.imdb_id,
+            record.nconst,
+            record.personId,
+            record.const,
+          ].find((value) => typeof value === 'string' && value) ?? nameCandidate;
         const imageCandidate =
-          getImageUrl(entry.image) ||
-          getImageUrl(entry.photo) ||
-          getImageUrl(entry.thumbnail) ||
-          getImageUrl(entry.avatar) ||
-          getImageUrl(entry.headshot) ||
-          getImageUrl(entry.primaryImage) ||
-          getImageUrl(entry.profileImage) ||
-          getImageUrl(entry.poster);
+          getImageUrl(record.image) ||
+          getImageUrl(record.photo) ||
+          getImageUrl(record.thumbnail) ||
+          getImageUrl(record.avatar) ||
+          getImageUrl(record.headshot) ||
+          getImageUrl(record.primaryImage) ||
+          getImageUrl(record.profileImage) ||
+          getImageUrl(record.poster);
         return {
           id: String(idCandidate),
-          name,
+          name: nameCandidate,
           image: imageCandidate,
         };
       }
       return null;
     };
 
-    const toPeopleArray = (value) => {
+    const toPeopleArray = (value: unknown): MoviePerson[] => {
       if (!value) return [];
       if (Array.isArray(value)) {
-        return value.map((item) => normalizePerson(item)).filter(Boolean);
+        return value
+          .map((item) => normalizePerson(item))
+          .filter((person): person is MoviePerson => Boolean(person));
       }
-      if (typeof value === 'object') {
-        if (Array.isArray(value.items)) return toPeopleArray(value.items);
-        if (Array.isArray(value.list)) return toPeopleArray(value.list);
-        if (Array.isArray(value.values)) return toPeopleArray(value.values);
-        if (Array.isArray(value.results)) return toPeopleArray(value.results);
-        if (Array.isArray(value.people)) return toPeopleArray(value.people);
+      if (typeof value === 'object' && value !== null) {
+        const record = value as Record<string, unknown>;
+        const nestedSources = [record.items, record.list, record.values, record.results, record.people];
+        for (const source of nestedSources) {
+          if (Array.isArray(source)) {
+            return toPeopleArray(source);
+          }
+        }
         const single = normalizePerson(value);
         return single ? [single] : [];
       }
@@ -549,14 +620,13 @@ function VersionsPage({ setError }) {
       return [];
     };
 
-    const mergePeople = (...sources) => {
-      const seen = new Map();
+    const mergePeople = (...sources: unknown[]): MoviePerson[] => {
+      const seen = new Map<string, MoviePerson>();
       sources.forEach((source) => {
         toPeopleArray(source).forEach((person) => {
-          const key = person.id || person.name;
-          if (!seen.has(key)) {
-            seen.set(key, person);
-          }
+          const key = person.id != null ? String(person.id) : person.name ?? '';
+          if (!key || seen.has(key)) return;
+          seen.set(key, person);
         });
       });
       return Array.from(seen.values());
@@ -572,7 +642,7 @@ function VersionsPage({ setError }) {
         const nextSynopsis =
           synopsisCandidates.map((entry) => toSynopsisString(entry)).find((entry) => Boolean(entry)) || '';
 
-        const nextCredits = {
+        const nextCredits: MovieCredits = {
           writers: mergePeople(
             data?.credits?.writers,
             data?.credits?.writing,
@@ -602,10 +672,10 @@ function VersionsPage({ setError }) {
         };
 
         const cleanSynopsis = nextSynopsis.trim();
-        const mergedCredits = {
-          writers: nextCredits.writers.length ? nextCredits.writers : cachedCredits.writers || [],
-          directors: nextCredits.directors.length ? nextCredits.directors : cachedCredits.directors || [],
-          stars: nextCredits.stars.length ? nextCredits.stars : cachedCredits.stars || [],
+        const mergedCredits: MovieCredits = {
+          writers: nextCredits.writers.length ? nextCredits.writers : cachedCredits.writers ?? [],
+          directors: nextCredits.directors.length ? nextCredits.directors : cachedCredits.directors ?? [],
+          stars: nextCredits.stars.length ? nextCredits.stars : cachedCredits.stars ?? [],
         };
 
         if (cleanSynopsis || cachedSynopsis) {
@@ -614,14 +684,15 @@ function VersionsPage({ setError }) {
 
         setCredits(mergedCredits);
 
-        const existing = movieCache.get(String(movieId)) || {};
-        movieCache.set(String(movieId), {
+        const existing: MovieCacheEntry = movieCache.get(String(movieId)) ?? {};
+        const nextEntry: MovieCacheEntry = {
           ...existing,
-          imdbId: existing.imdbId || cachedMovie.imdbId,
+          imdbId: existing.imdbId ?? cachedMovie.imdbId,
           synopsis: cleanSynopsis || existing.synopsis || cachedSynopsis || '',
           credits: mergedCredits,
           imdbDetailsFetched: true,
-        });
+        };
+        movieCache.set(String(movieId), nextEntry);
       } catch (error) {
         console.error('Failed to load IMDb details', error);
       } finally {
@@ -645,7 +716,8 @@ function VersionsPage({ setError }) {
       try {
         const { versions: list } = await getVersions(movieId, titleParam);
         if (!cancelled) {
-          setVersions(list || []);
+          const nextVersions = Array.isArray(list) ? list : [];
+          setVersions(nextVersions);
         }
       } catch (e) {
         if (!cancelled) {
@@ -677,7 +749,7 @@ function VersionsPage({ setError }) {
     }
   };
 
-  const requestDownload = (version) => {
+  const requestDownload = (version: MovieVersion) => {
     setPendingVersion(version);
   };
 
@@ -710,7 +782,7 @@ function VersionsPage({ setError }) {
       (credits.stars && credits.stars.length),
   );
 
-  const renderPeopleGroup = (label, people) => {
+  const renderPeopleGroup = (label: string, people: MoviePerson[]): JSX.Element | null => {
     if (!Array.isArray(people) || people.length === 0) return null;
     return (
       <div>
@@ -719,9 +791,11 @@ function VersionsPage({ setError }) {
         </div>
         <ul className="flex flex-wrap gap-3">
           {people.map((person, index) => {
-            const displayName = person.name || person.id;
+            const displayName =
+              (typeof person.name === 'string' && person.name.trim()) ||
+              (person.id != null ? String(person.id) : '');
             const placeholder = displayName ? displayName.charAt(0).toUpperCase() : '?';
-            const key = person.id || `${displayName}-${index}`;
+            const key = person.id != null ? String(person.id) : `${displayName || 'person'}-${index}`;
             return (
               <li
                 key={key}
@@ -730,7 +804,7 @@ function VersionsPage({ setError }) {
                 {person.image ? (
                   <img
                     src={person.image}
-                    alt={displayName}
+                    alt={displayName || 'Person'}
                     className="h-12 w-12 flex-none rounded-full object-cover"
                   />
                 ) : (
@@ -738,7 +812,9 @@ function VersionsPage({ setError }) {
                     {placeholder}
                   </div>
                 )}
-                <span className="text-sm font-medium text-foreground">{displayName}</span>
+                <span className="text-sm font-medium text-foreground">
+                  {displayName || 'Unknown'}
+                </span>
               </li>
             );
           })}
@@ -867,7 +943,8 @@ function VersionsPage({ setError }) {
                 {pendingVersion.remasterTitle ? ` / ${pendingVersion.remasterTitle}` : ''}
               </div>
               <div>
-                Seeders: {pendingVersion.seeders}, Snatched: {pendingVersion.snatched}, Size: {pendingVersion.sizeGB?.toFixed ? pendingVersion.sizeGB.toFixed(2) : pendingVersion.sizeGB} GB
+                Seeders: {pendingVersion.seeders}, Snatched: {pendingVersion.snatched}, Size:{' '}
+                {formatSizeGb(pendingVersion.sizeGB) || 'Unknown'} GB
               </div>
             </div>
           )}
@@ -911,10 +988,10 @@ export default function App() {
   const { isEmbeddedApp } = useEmbeddedAppContext();
   const navigate = useNavigate();
   const { token, saveToken, clearToken } = useLocalToken();
-  const [topMovies, setTopMovies] = useState([]);
-  const [error, setError] = useState('');
-  const topMoviesRequested = useRef(false);
-  const [isManualTheme, setIsManualTheme] = useState(() => {
+  const [topMovies, setTopMovies] = useState<MovieSummary[]>([]);
+  const [error, setError] = useState<string>('');
+  const topMoviesRequested = useRef<boolean>(false);
+  const [isManualTheme, setIsManualTheme] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     try {
       const stored = localStorage.getItem('theme');
@@ -923,7 +1000,7 @@ export default function App() {
       return false;
     }
   });
-  const [theme, setTheme] = useState(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'light';
     try {
       const stored = localStorage.getItem('theme');
@@ -968,7 +1045,7 @@ export default function App() {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (event) => {
+    const handleChange = (event: MediaQueryListEvent) => {
       setTheme(event.matches ? 'dark' : 'light');
     };
 

@@ -32,15 +32,15 @@ A static React app (Vite + Tailwind) that searches movies and starts downloads t
 On first load, you’ll be prompted for a token. It is saved to `localStorage.token`.
 
 ## Project Structure
-- `src/App.jsx` — main UI and flow
-- `src/api.js` — API calls (single `API_BASE` constant)
+- `src/App.tsx` — main UI and flow
+- `src/api.ts` — API calls (single `API_BASE` constant)
 - `src/components/*` — small UI components (shadcn-style)
 - `src/index.css` — Tailwind + CSS variables
-- `vite.config.js` — includes `base` for GitHub Pages
+- `vite.config.ts` — includes `base` for GitHub Pages
 
 ## Deployment (GitHub Pages)
 This repo is configured for Pages under the path `/drews-movie-dashboard/`.
-- If your repo name or Pages path differs, change `base` in `vite.config.js`.
+- If your repo name or Pages path differs, change `base` in `vite.config.ts`.
 
 ### Deploy using gh-pages branch (recommended)
 We include a `gh-pages` deploy script that builds and publishes `dist/` to the `gh-pages` branch.
