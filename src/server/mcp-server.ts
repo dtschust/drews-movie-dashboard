@@ -218,7 +218,6 @@ async function handleSseRequest(res: ServerResponse) {
 
   transport.onclose = async () => {
     sessions.delete(sessionId);
-    await server.close();
   };
 
   transport.onerror = (error) => {
