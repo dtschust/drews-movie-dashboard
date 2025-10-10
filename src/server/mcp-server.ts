@@ -66,7 +66,7 @@ function widgetMeta(widget: MovieDashboardWidget) {
 const widgets: MovieDashboardWidget[] = [
   {
     id: 'movie-dashboard',
-    title: 'Show Movie Dashboard',
+    title: 'Show Movie Dashboard or Search for Movies',
     templateUri: `ui://widget/movie-dashboard-v${RESOURCE_VERSION}.html`,
     invoking: 'Loading Movie Dashboard',
     invoked: 'Loaded Movie Dashboard',
@@ -319,5 +319,3 @@ async function searchMovies(query: string): Promise<MovieSearchResponse> {
   }
   return (await res.json()) as MovieSearchResponse;
 }
-
-console.log('drewfixme: token', process.env.TOKEN);
