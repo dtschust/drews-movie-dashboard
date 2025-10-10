@@ -33,7 +33,7 @@ const MOVIE_DASHBOARD_HTML = readFileSync(
 );
 const API_BASE = 'https://tools.drew.shoes/movies';
 
-const RESOURCE_VERSION = '3';
+const RESOURCE_VERSION = '4';
 
 type MovieDashboardWidget = {
   id: string;
@@ -85,7 +85,12 @@ widgets.forEach((widget) => {
 
 const toolInputSchema = {
   type: 'object',
-  properties: {},
+  properties: {
+    search: {
+      type: 'string',
+      description: 'Search for movies',
+    },
+  },
   additionalProperties: false,
 } as const;
 
