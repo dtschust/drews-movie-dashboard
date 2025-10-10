@@ -33,7 +33,7 @@ const MOVIE_DASHBOARD_HTML = readFileSync(
 );
 const API_BASE = 'https://tools.drew.shoes/movies';
 
-const RESOURCE_VERSION = '5';
+const RESOURCE_VERSION = '8';
 
 type MovieDashboardWidget = {
   id: string;
@@ -66,7 +66,7 @@ function widgetMeta(widget: MovieDashboardWidget) {
 const widgets: MovieDashboardWidget[] = [
   {
     id: 'movie-dashboard',
-    title: 'Show Movie Dashboard or Search for Movies',
+    title: 'Show Movie Dashboard or Download a Movie',
     templateUri: `ui://widget/movie-dashboard-v${RESOURCE_VERSION}.html`,
     invoking: 'Loading Movie Dashboard',
     invoked: 'Loaded Movie Dashboard',
@@ -105,6 +105,13 @@ const tools: Tool[] = widgets.map((widget) => ({
   title: widget.title,
   _meta: widgetMeta(widget),
 }));
+
+tools.push({
+  name: 'search-movies',
+  description: 'Search for movies',
+  inputSchema: toolInputSchema,
+  title: 'Search for movies',
+});
 
 const resources: Resource[] = widgets.map((widget) => ({
   uri: widget.templateUri,
@@ -171,6 +178,23 @@ function createMCPServer(): Server {
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
+    if (request.params.name === 'search-movies') {
+      const args = toolInputParser.parse(request.params.arguments ?? {});
+      const { movies } = await searchMovies(args.search ?? '');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Found ${movies?.length ?? 0} movies`,
+          },
+        ],
+        structuredContent: {
+          movies,
+        },
+      };
+    }
+
     const widget = widgetsById.get(request.params.name);
 
     if (!widget) {
@@ -179,11 +203,6 @@ function createMCPServer(): Server {
 
     const args = toolInputParser.parse(request.params.arguments ?? {});
     const structuredContent: Record<string, unknown> = {};
-    if (args.search) {
-      structuredContent.search = args.search;
-      const { movies } = await searchMovies(args.search);
-      structuredContent.movies = movies ?? undefined;
-    }
 
     return {
       content: [

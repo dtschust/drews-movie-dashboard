@@ -24,7 +24,7 @@ import { VersionsPage } from '@/routes/VersionsPage';
 import { DownloadPage } from '@/routes/DownloadPage';
 import { toErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
-import { useToolOutput } from '@/lib/skybridge';
+import { useToolInput, useToolOutput } from '@/lib/skybridge';
 
 const APP_CONTAINER_BASE_CLASSES = 'mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10';
 
@@ -224,12 +224,16 @@ function AppLayout({
 
 export default function App() {
   const { isEmbeddedApp } = useEmbeddedAppContext();
-  const toolOutput = useToolOutput();
-  console.log('drewfixme: toolOutput', toolOutput);
+  const toolInput = useToolInput();
+  const { search } = toolInput ?? {};
 
-  if (toolOutput) {
-    debugger;
-  }
+  useEffect(() => {
+    if (search) {
+      setError('');
+      navigate(`/search?query=${search}`, { replace: true });
+    }
+  }, [search]);
+
   const navigate = useNavigate();
   const { token, saveToken, clearToken } = useLocalToken();
   const [topMovies, setTopMovies] = useState<MovieSummary[]>([]);
