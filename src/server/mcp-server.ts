@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL, fileURLToPath } from 'node:url';
 import path from 'node:path';
+import 'dotenv/config';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -21,13 +22,18 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { readFileSync } from 'node:fs';
+import { MovieSearchResponse } from '../types.js';
 
 // Load locally built assets (produced by your component build)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const MOVIE_DASHBOARD_HTML = readFileSync(path.resolve(__dirname, '../../dist/index.html'), 'utf8');
+const MOVIE_DASHBOARD_HTML = readFileSync(
+  path.resolve(__dirname, '../../dist/embedded/index.html'),
+  'utf8',
+);
+const API_BASE = 'https://tools.drew.shoes/movies';
 
-const RESOURCE_VERSION = '2';
+const RESOURCE_VERSION = '3';
 
 type MovieDashboardWidget = {
   id: string;
@@ -65,7 +71,7 @@ const widgets: MovieDashboardWidget[] = [
     invoking: 'Loading Movie Dashboard',
     invoked: 'Loaded Movie Dashboard',
     html: MOVIE_DASHBOARD_HTML,
-    responseText: 'Rendered movie dashboard!',
+    responseText: 'Hi Drew!',
   },
 ];
 
@@ -83,7 +89,9 @@ const toolInputSchema = {
   additionalProperties: false,
 } as const;
 
-const toolInputParser = z.object({});
+const toolInputParser = z.object({
+  search: z.string().optional(),
+});
 
 const tools: Tool[] = widgets.map((widget) => ({
   name: widget.id,
@@ -164,7 +172,13 @@ function createMCPServer(): Server {
       throw new Error(`Unknown tool: ${request.params.name}`);
     }
 
-    // const args = toolInputParser.parse(request.params.arguments ?? {});
+    const args = toolInputParser.parse(request.params.arguments ?? {});
+    const structuredContent: Record<string, unknown> = {};
+    if (args.search) {
+      structuredContent.search = args.search;
+      const { movies } = await searchMovies(args.search);
+      structuredContent.movies = movies ?? undefined;
+    }
 
     return {
       content: [
@@ -173,7 +187,7 @@ function createMCPServer(): Server {
           text: widget.responseText,
         },
       ],
-      structuredContent: {},
+      structuredContent,
       _meta: widgetMeta(widget),
     };
   });
@@ -289,3 +303,21 @@ httpServer.listen(port, () => {
   console.log(`  SSE stream: GET http://localhost:${port}${ssePath}`);
   console.log(`  Message post endpoint: POST http://localhost:${port}${postPath}?sessionId=...`);
 });
+
+async function searchMovies(query: string): Promise<MovieSearchResponse> {
+  const token = process.env.TOKEN;
+  if (!token) {
+    throw new Error('TOKEN is not set');
+  }
+  const url = new URL(API_BASE + '/search');
+  url.searchParams.set('q', query);
+  url.searchParams.set('token', token);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Search failed (${res.status})`);
+  }
+  return (await res.json()) as MovieSearchResponse;
+}
+
+console.log('drewfixme: token', process.env.TOKEN);

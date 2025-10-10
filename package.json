@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
+    "dev:embedded": "vite --mode embedded",
     "build:web": "vite build --mode web",
     "build:embedded": "vite build --mode embedded",
     "build": "npm run build:web && npm run build:embedded",
@@ -28,6 +29,7 @@
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.0.2",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^17.2.3",
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
