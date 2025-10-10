@@ -16,4 +16,13 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        format: 'es',
+        inlineDynamicImports: true,
+        entryFileNames: 'assets/bundle.js',
+      },
+    },
+  },
 });
