@@ -34,7 +34,7 @@ if (typeof document !== 'undefined') {
   }
 }
 
-const root = createRoot(document.getElementById('root'));
+const root = createRoot(document.getElementById('drews-movie-dashboard-root'));
 root.render(
   <React.StrictMode>
     <HashRouter>
