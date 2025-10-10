@@ -33,7 +33,7 @@ const MOVIE_DASHBOARD_HTML = readFileSync(
 );
 const API_BASE = 'https://tools.drew.shoes/movies';
 
-const RESOURCE_VERSION = '4';
+const RESOURCE_VERSION = '5';
 
 type MovieDashboardWidget = {
   id: string;
