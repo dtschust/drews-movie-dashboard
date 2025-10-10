@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build",
+    "build:web": "vite build --mode web",
+    "build:embedded": "vite build --mode embedded",
+    "build": "npm run build:web && npm run build:embedded",
     "lint": "prettier --check .",
     "lint:fix": "prettier --write .",
     "typecheck": "tsc --noEmit",
