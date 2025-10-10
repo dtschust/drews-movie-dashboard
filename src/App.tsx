@@ -23,6 +23,9 @@ import { SearchPage } from '@/routes/SearchPage';
 import { VersionsPage } from '@/routes/VersionsPage';
 import { DownloadPage } from '@/routes/DownloadPage';
 import { toErrorMessage } from '@/lib/errors';
+import { cn } from '@/lib/utils';
+
+const APP_CONTAINER_BASE_CLASSES = 'mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10';
 
 interface LocalTokenState {
   token: string;
@@ -127,13 +130,26 @@ interface AppLayoutProps {
   onRestart: () => void;
   onToggleTheme: () => void;
   theme: Theme;
+  isEmbeddedApp: boolean;
   children: ReactNode;
 }
 
-function AppLayout({ onLogout, error, onRestart, onToggleTheme, theme, children }: AppLayoutProps) {
+function AppLayout({
+  onLogout,
+  error,
+  onRestart,
+  onToggleTheme,
+  theme,
+  isEmbeddedApp,
+  children,
+}: AppLayoutProps) {
+  const containerClassName = cn(
+    APP_CONTAINER_BASE_CLASSES,
+    isEmbeddedApp && 'max-h-[600px] overflow-y-auto',
+  );
   const [logoutOpen, setLogoutOpen] = useState<boolean>(false);
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
+    <div className={containerClassName}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <button
@@ -277,6 +293,11 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  const containerClassName = cn(
+    APP_CONTAINER_BASE_CLASSES,
+    isEmbeddedApp && 'max-h-[600px] overflow-y-auto',
+  );
+
   useEffect(() => {
     if (!token) return;
     if (topMoviesRequested.current) return;
@@ -308,15 +329,17 @@ export default function App() {
 
   if (!token) {
     return (
-      <TokenGate
-        onSaved={(value) => {
-          saveToken(value);
-          setError('');
-          setTopMovies([]);
-          topMoviesRequested.current = false;
-          navigate('/search', { replace: true });
-        }}
-      />
+      <div className={containerClassName}>
+        <TokenGate
+          onSaved={(value) => {
+            saveToken(value);
+            setError('');
+            setTopMovies([]);
+            topMoviesRequested.current = false;
+            navigate('/search', { replace: true });
+          }}
+        />
+      </div>
     );
   }
 
@@ -341,6 +364,7 @@ export default function App() {
       onRestart={handleRestart}
       onToggleTheme={toggleTheme}
       theme={theme}
+      isEmbeddedApp={isEmbeddedApp}
     >
       <Routes>
         <Route path="/" element={<SearchPage topMovies={topMovies} setError={setError} />} />
