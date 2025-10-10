@@ -27,6 +27,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const MOVIE_DASHBOARD_HTML = readFileSync(path.resolve(__dirname, '../../dist/index.html'), 'utf8');
 
+const RESOURCE_VERSION = '2';
+
 type MovieDashboardWidget = {
   id: string;
   title: string;
@@ -48,7 +50,7 @@ function widgetMeta(widget: MovieDashboardWidget) {
       connect_domains: ['https://tools.drew.shoes', 'https://api.imdbapi.dev'],
       resource_domains: [
         'https://persistent.oaistatic.com',
-        'ptpimg.me',
+        'https://ptpimg.me',
         'https://m.media-amazon.com',
       ],
     },
@@ -59,7 +61,7 @@ const widgets: MovieDashboardWidget[] = [
   {
     id: 'movie-dashboard',
     title: 'Show Movie Dashboard',
-    templateUri: 'ui://widget/movie-dashboard.html',
+    templateUri: `ui://widget/movie-dashboard-v${RESOURCE_VERSION}.html`,
     invoking: 'Loading Movie Dashboard',
     invoked: 'Loaded Movie Dashboard',
     html: MOVIE_DASHBOARD_HTML,
