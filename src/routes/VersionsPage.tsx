@@ -17,6 +17,8 @@ import { downloadMovie, getImdbDetails, getVersions } from '@/api';
 import { movieCache } from '@/lib/movieCache';
 import { toErrorMessage } from '@/lib/errors';
 import type { MovieCacheEntry, MovieCredits, MoviePerson, MovieVersion } from '@/types';
+import { useEmbeddedAppContext } from '@/context/EmbeddedAppContext';
+import { cn } from '@/lib/utils';
 
 const createEmptyCredits = (): MovieCredits => ({
   writers: [],
@@ -40,22 +42,22 @@ interface VersionRowProps {
 }
 
 function VersionRow({ version, onSelect }: VersionRowProps) {
+  const { isEmbeddedApp } = useEmbeddedAppContext();
   const line1 = `\n${version.quality} / ${version.codec} / ${version.container} / ${version.source} /\n${version.resolution}${version.scene ? ' / Scene' : ''}${version.remasterTitle ? ` / ${version.remasterTitle}` : ''}`;
   const sizeLabel = formatSizeGb(version.sizeGB) || 'Unknown';
 
   return (
     <button
       type="button"
-      className="w-full rounded-lg border border-border bg-card/70 p-4 text-left transition hover:border-primary/60 hover:bg-card"
+      className={cn(
+        'w-full rounded-lg border border-border bg-card/70 p-4 text-left transition hover:border-primary/60 hover:bg-card',
+        isEmbeddedApp && 'p-2',
+      )}
       onClick={onSelect}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="whitespace-pre-line text-sm font-medium text-foreground">{line1}</div>
-        <div className="text-lg" aria-hidden="true">
-          {version.goldenPopcorn ? '🍿' : version.checked ? '✅' : '🎞️'}
-        </div>
-      </div>
+      <div className="text-sm font-medium text-foreground">{line1}</div>
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span>{version.goldenPopcorn ? '🍿' : version.checked ? '✅' : '🎞️'}</span>
         <span>Seeders: {version.seeders}</span>
         <span>Snatched: {version.snatched}</span>
         <span>Size: {sizeLabel} GB</span>

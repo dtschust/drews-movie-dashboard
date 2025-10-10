@@ -145,34 +145,39 @@ function AppLayout({
 }: AppLayoutProps) {
   const containerClassName = cn(
     APP_CONTAINER_BASE_CLASSES,
-    isEmbeddedApp && 'max-h-[600px] overflow-y-auto',
+    isEmbeddedApp && 'max-h-[600px] overflow-y-auto py-3',
   );
   const [logoutOpen, setLogoutOpen] = useState<boolean>(false);
   return (
     <div className={containerClassName}>
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <button
-            type="button"
-            onClick={onRestart}
-            className="text-left text-3xl font-semibold text-foreground transition hover:text-primary focus:outline-none focus-visible:underline"
-          >
-            Drew's Movie Dashboard
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={onToggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-          <Button variant="outline" onClick={() => setLogoutOpen(true)}>
-            Log out
-          </Button>
-        </div>
-      </header>
+      {!isEmbeddedApp && (
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <button
+              type="button"
+              onClick={onRestart}
+              className={cn(
+                'text-left font-semibold text-foreground transition hover:text-primary focus:outline-none focus-visible:underline',
+                isEmbeddedApp ? 'text-xl' : 'text-3xl',
+              )}
+            >
+              Drew's Movie Dashboard
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={onToggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button variant="outline" onClick={() => setLogoutOpen(true)}>
+              Log out
+            </Button>
+          </div>
+        </header>
+      )}
 
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <DialogContent>
@@ -211,7 +216,7 @@ function AppLayout({
         </Alert>
       )}
 
-      <div className="space-y-6">{children}</div>
+      <div className={cn('space-y-6', isEmbeddedApp && 'space-y-3')}>{children}</div>
     </div>
   );
 }
@@ -367,8 +372,18 @@ export default function App() {
       isEmbeddedApp={isEmbeddedApp}
     >
       <Routes>
-        <Route path="/" element={<SearchPage topMovies={topMovies} setError={setError} />} />
-        <Route path="/search" element={<SearchPage topMovies={topMovies} setError={setError} />} />
+        <Route
+          path="/"
+          element={
+            <SearchPage isEmbeddedApp={isEmbeddedApp} topMovies={topMovies} setError={setError} />
+          }
+        />
+        <Route
+          path="/search"
+          element={
+            <SearchPage isEmbeddedApp={isEmbeddedApp} topMovies={topMovies} setError={setError} />
+          }
+        />
         <Route path="/torrents/:movieId" element={<VersionsPage setError={setError} />} />
         <Route path="/download" element={<DownloadPage />} />
         <Route path="*" element={<Navigate to="/search" replace />} />

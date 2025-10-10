@@ -9,6 +9,8 @@ import { rememberMovies } from '@/lib/movieCache';
 import type { MovieSummary } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { toErrorMessage } from '@/lib/errors';
+import { cn } from '@/lib/utils';
+import { useEmbeddedAppContext } from '@/context/EmbeddedAppContext';
 
 interface MovieCardProps {
   movie: MovieSummary;
@@ -16,13 +18,19 @@ interface MovieCardProps {
 }
 
 function MovieCard({ movie, onClick }: MovieCardProps) {
+  const { isEmbeddedApp } = useEmbeddedAppContext();
   return (
     <Card
-      className="flex h-full cursor-pointer flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lg"
+      className={cn(
+        'flex h-full cursor-pointer flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lg',
+        isEmbeddedApp && 'p-2 flex-row items-start justify-start',
+      )}
       onClick={onClick}
     >
       {movie.posterUrl ? (
-        <div className="aspect-[2/3] w-full overflow-hidden">
+        <div
+          className={cn('aspect-[2/3] w-full overflow-hidden max-w-', isEmbeddedApp && 'max-w-12')}
+        >
           <img
             src={movie.posterUrl}
             alt={movie.title ?? 'Movie poster'}
@@ -34,7 +42,7 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
           No poster available
         </div>
       )}
-      <CardContent className="px-4 py-3">
+      <CardContent className={cn('px-4 py-3', isEmbeddedApp && 'py-0')}>
         <div className="font-semibold" title={movie.title ?? undefined}>
           {movie.title}
         </div>
@@ -47,9 +55,10 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
 export interface SearchPageProps {
   topMovies: MovieSummary[];
   setError: Dispatch<SetStateAction<string>>;
+  isEmbeddedApp: boolean;
 }
 
-export function SearchPage({ topMovies, setError }: SearchPageProps) {
+export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get('query') || '';
   const [inputValue, setInputValue] = useState<string>(queryParam);
@@ -131,10 +140,12 @@ export function SearchPage({ topMovies, setError }: SearchPageProps) {
 
   return (
     <>
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Search movies</CardTitle>
-        </CardHeader>
+      <Card className={cn('mb-6', isEmbeddedApp && 'p-3 mb-1')}>
+        {!isEmbeddedApp && (
+          <CardHeader>
+            <CardTitle>Search movies</CardTitle>
+          </CardHeader>
+        )}
         <CardContent>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input
@@ -165,7 +176,12 @@ export function SearchPage({ topMovies, setError }: SearchPageProps) {
 
       {!loading && movies.length > 0 && (
         <div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div
+            className={cn(
+              'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
+              isEmbeddedApp && 'grid-cols-1 gap-2',
+            )}
+          >
             {movies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleMovieClick(m)} />
             ))}
@@ -176,9 +192,14 @@ export function SearchPage({ topMovies, setError }: SearchPageProps) {
       {showTopMovies && (
         <div>
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Weekly recommendations
+            Top Movies this Week
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div
+            className={cn(
+              'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
+              isEmbeddedApp && 'grid-cols-1 gap-2',
+            )}
+          >
             {topMovies.map((m) => (
               <MovieCard key={m.id} movie={m} onClick={() => handleTopMovie(m)} />
             ))}
