@@ -33,7 +33,7 @@ const MOVIE_DASHBOARD_HTML = readFileSync(
 );
 const API_BASE = 'https://tools.drew.shoes/movies';
 
-const RESOURCE_VERSION = '13';
+const RESOURCE_VERSION = '16';
 
 type MovieDashboardWidget = {
   id: string;
@@ -52,6 +52,7 @@ function widgetMeta(widget: MovieDashboardWidget) {
     'openai/toolInvocation/invoked': widget.invoked,
     'openai/widgetAccessible': true,
     'openai/resultCanProduceWidget': true,
+    'openai/widgetDomain': 'https://dtschust.github.io/drews-movie-dashboard/',
     'openai/widgetCSP': {
       connect_domains: ['https://tools.drew.shoes', 'https://api.imdbapi.dev'],
       resource_domains: [
@@ -111,7 +112,12 @@ tools.push({
   description: 'Search for movies',
   inputSchema: toolInputSchema,
   title: 'Search for movies',
+  templateUri: `ui://widget/movie-dashboard-v${RESOURCE_VERSION}.html`,
+  invoking: 'Loading Movie Dashboard',
+  invoked: 'Loaded Movie Dashboard',
+  html: MOVIE_DASHBOARD_HTML,
   _meta: {
+    ...widgetMeta(widgets[0]),
     'openai/widgetAccessible': true,
   },
 });
@@ -121,7 +127,12 @@ tools.push({
   description: 'get top movies',
   inputSchema: toolInputSchema,
   title: 'Get Top Movies',
+  templateUri: `ui://widget/movie-dashboard-v${RESOURCE_VERSION}.html`,
+  invoking: 'Loading Movie Dashboard',
+  invoked: 'Loaded Movie Dashboard',
+  html: MOVIE_DASHBOARD_HTML,
   _meta: {
+    ...widgetMeta(widgets[0]),
     'openai/widgetAccessible': true,
   },
 });

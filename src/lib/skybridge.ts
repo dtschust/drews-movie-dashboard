@@ -114,7 +114,7 @@ export function useOpenAiGlobal<K extends keyof OpenAiGlobals>(key: K): OpenAiGl
         window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handleSetGlobal);
       };
     },
-    () => window.openai[key],
+    () => window.openai?.[key],
   );
 }
 

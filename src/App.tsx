@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Moon, Sun } from 'lucide-react';
+import { Maximize2, Moon, Sun } from 'lucide-react';
 import { useEmbeddedAppContext } from './context/EmbeddedAppContext';
 import { rememberMovies } from '@/lib/movieCache';
 import { getTopMovies } from './api';
@@ -24,7 +24,7 @@ import { VersionsPage } from '@/routes/VersionsPage';
 import { DownloadPage } from '@/routes/DownloadPage';
 import { toErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
-import { useToolInput, useToolOutput } from '@/lib/skybridge';
+import { useOpenAiGlobal, useToolInput } from '@/lib/skybridge';
 
 const APP_CONTAINER_BASE_CLASSES = 'mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10';
 
@@ -130,6 +130,7 @@ interface AppLayoutProps {
   error: string;
   onRestart: () => void;
   onToggleTheme: () => void;
+  onToggleFullscreen: () => void;
   theme: Theme;
   isEmbeddedApp: boolean;
   children: ReactNode;
@@ -140,10 +141,12 @@ function AppLayout({
   error,
   onRestart,
   onToggleTheme,
+  onToggleFullscreen,
   theme,
   isEmbeddedApp,
   children,
 }: AppLayoutProps) {
+  const mode = useOpenAiGlobal('displayMode');
   const containerClassName = cn(
     APP_CONTAINER_BASE_CLASSES,
     isEmbeddedApp && 'max-h-[600px] overflow-y-auto py-3',
@@ -151,34 +154,46 @@ function AppLayout({
   const [logoutOpen, setLogoutOpen] = useState<boolean>(false);
   return (
     <div className={containerClassName}>
-      {!isEmbeddedApp && (
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <button
-              type="button"
-              onClick={onRestart}
-              className={cn(
-                'text-left font-semibold text-foreground transition hover:text-primary focus:outline-none focus-visible:underline',
-                isEmbeddedApp ? 'text-xl' : 'text-3xl',
-              )}
-            >
-              Drew's Movie Dashboard
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={onToggleTheme}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <Button variant="outline" onClick={() => setLogoutOpen(true)}>
-              Log out
-            </Button>
-          </div>
-        </header>
-      )}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <button
+            type="button"
+            onClick={onRestart}
+            className={cn(
+              'text-left font-semibold text-foreground transition hover:text-primary focus:outline-none focus-visible:underline',
+              isEmbeddedApp ? 'text-xl' : 'text-3xl',
+            )}
+          >
+            Drew's Movie Dashboard
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {isEmbeddedApp ? (
+            mode !== 'fullscreen' && (
+              <Button
+                variant="outline"
+                onClick={onToggleFullscreen}
+                aria-label={`Switch to fullscreen mode`}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            )
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={onToggleTheme}
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" onClick={() => setLogoutOpen(true)}>
+                Log out
+              </Button>
+            </>
+          )}
+        </div>
+      </header>
 
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <DialogContent>
@@ -304,6 +319,12 @@ export default function App() {
     };
   }, [isManualTheme]);
 
+  const toggleFullscreen = () => {
+    if (isEmbeddedApp) {
+      window.openai?.requestDisplayMode?.({ mode: 'fullscreen' });
+    }
+  };
+
   const toggleTheme = () => {
     setIsManualTheme(true);
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -378,6 +399,7 @@ export default function App() {
       onLogout={handleLogout}
       error={error}
       onRestart={handleRestart}
+      onToggleFullscreen={toggleFullscreen}
       onToggleTheme={toggleTheme}
       theme={theme}
       isEmbeddedApp={isEmbeddedApp}
