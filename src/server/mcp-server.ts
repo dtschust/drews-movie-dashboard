@@ -22,7 +22,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { readFileSync } from 'node:fs';
-import { MovieSearchResponse } from '../types.js';
+import { MovieSearchResponse, TopMoviesResponse } from '../types.js';
 
 // Load locally built assets (produced by your component build)
 const __filename = fileURLToPath(import.meta.url);
@@ -33,7 +33,7 @@ const MOVIE_DASHBOARD_HTML = readFileSync(
 );
 const API_BASE = 'https://tools.drew.shoes/movies';
 
-const RESOURCE_VERSION = '8';
+const RESOURCE_VERSION = '13';
 
 type MovieDashboardWidget = {
   id: string;
@@ -66,7 +66,7 @@ function widgetMeta(widget: MovieDashboardWidget) {
 const widgets: MovieDashboardWidget[] = [
   {
     id: 'movie-dashboard',
-    title: 'Show Movie Dashboard or Download a Movie',
+    title: 'Show Movie Dashboard or get information about a Movie',
     templateUri: `ui://widget/movie-dashboard-v${RESOURCE_VERSION}.html`,
     invoking: 'Loading Movie Dashboard',
     invoked: 'Loaded Movie Dashboard',
@@ -111,6 +111,19 @@ tools.push({
   description: 'Search for movies',
   inputSchema: toolInputSchema,
   title: 'Search for movies',
+  _meta: {
+    'openai/widgetAccessible': true,
+  },
+});
+
+tools.push({
+  name: 'get-top-movies',
+  description: 'get top movies',
+  inputSchema: toolInputSchema,
+  title: 'Get Top Movies',
+  _meta: {
+    'openai/widgetAccessible': true,
+  },
 });
 
 const resources: Resource[] = widgets.map((widget) => ({
@@ -187,6 +200,22 @@ function createMCPServer(): Server {
           {
             type: 'text',
             text: `Found ${movies?.length ?? 0} movies`,
+          },
+        ],
+        structuredContent: {
+          movies,
+        },
+      };
+    }
+
+    if (request.params.name === 'get-top-movies') {
+      const { movies } = await getTopMovies();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Found ${movies?.length ?? 0} top movies`,
           },
         ],
         structuredContent: {
@@ -342,4 +371,19 @@ async function searchMovies(query: string): Promise<MovieSearchResponse> {
     throw new Error(text || `Search failed (${res.status})`);
   }
   return (await res.json()) as MovieSearchResponse;
+}
+
+async function getTopMovies(): Promise<TopMoviesResponse> {
+  const token = process.env.TOKEN;
+  if (!token) {
+    throw new Error('TOKEN is not set');
+  }
+  const url = new URL(API_BASE + '/topMovies');
+  url.searchParams.set('token', token);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Top movies failed (${res.status})`);
+  }
+  return (await res.json()) as TopMoviesResponse;
 }

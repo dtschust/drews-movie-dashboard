@@ -323,7 +323,7 @@ export default function App() {
 
     async function fetchTop() {
       try {
-        const { movies: list } = await getTopMovies();
+        const { movies: list } = await getTopMovies(isEmbeddedApp);
         if (!cancelled) {
           const nextTop = Array.isArray(list) ? list : [];
           rememberMovies(nextTop);

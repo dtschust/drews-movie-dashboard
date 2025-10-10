@@ -17,29 +17,42 @@ function getToken(): string {
   }
 }
 
-export async function searchMovies(query: string): Promise<MovieSearchResponse> {
-  const token = getToken();
-  const url = new URL(API_BASE + '/search');
-  url.searchParams.set('q', query);
-  url.searchParams.set('token', token);
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Search failed (${res.status})`);
+export async function searchMovies(
+  query: string,
+  isEmbeddedApp: boolean = false,
+): Promise<MovieSearchResponse> {
+  if (isEmbeddedApp) {
+    const toolResponse = await window.openai.callTool('search-movies', { search: query });
+    return toolResponse?.structuredContent as MovieSearchResponse;
+  } else {
+    const token = getToken();
+    const url = new URL(API_BASE + '/search');
+    url.searchParams.set('q', query);
+    url.searchParams.set('token', token);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Search failed (${res.status})`);
+    }
+    return (await res.json()) as MovieSearchResponse;
   }
-  return (await res.json()) as MovieSearchResponse;
 }
 
-export async function getTopMovies(): Promise<TopMoviesResponse> {
-  const token = getToken();
-  const url = new URL(API_BASE + '/topMovies');
-  url.searchParams.set('token', token);
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Top movies failed (${res.status})`);
+export async function getTopMovies(isEmbeddedApp: boolean = false): Promise<TopMoviesResponse> {
+  if (isEmbeddedApp) {
+    const toolResponse = await window.openai.callTool('get-top-movies', {});
+    return toolResponse?.structuredContent as TopMoviesResponse;
+  } else {
+    const token = getToken();
+    const url = new URL(API_BASE + '/topMovies');
+    url.searchParams.set('token', token);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Top movies failed (${res.status})`);
+    }
+    return (await res.json()) as TopMoviesResponse;
   }
-  return (await res.json()) as TopMoviesResponse;
 }
 
 export async function getVersions(id: string | number, title = ''): Promise<VersionsResponse> {

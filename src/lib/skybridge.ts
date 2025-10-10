@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 declare global {
   interface Window {
-    openai: OpenAiGlobals;
+    openai: API<UnknownObject> & OpenAiGlobals;
   }
 
   interface WindowEventMap {

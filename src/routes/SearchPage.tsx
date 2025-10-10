@@ -86,7 +86,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
       setError('');
       setMovies([]);
       try {
-        const { movies: list } = await searchMovies(queryParam.trim());
+        const { movies: list } = await searchMovies(queryParam.trim(), isEmbeddedApp);
         if (!cancelled) {
           const nextMovies = Array.isArray(list) ? list : [];
           rememberMovies(nextMovies);
@@ -129,7 +129,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const handleTopMovie = async (movie: MovieSummary) => {
     const params = new URLSearchParams();
     if (movie.title) {
-      const { movies: list } = await searchMovies(movie.title);
+      const { movies: list } = await searchMovies(movie.title, isEmbeddedApp);
       const nextMovies = Array.isArray(list) ? list : [];
       rememberMovies(nextMovies);
       params.set('title', movie.title);
