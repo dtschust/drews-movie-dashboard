@@ -6,7 +6,6 @@ dist/
 build/
 .vite/
 .cache/
-package-lock.json
 
 # Env files
 .env
