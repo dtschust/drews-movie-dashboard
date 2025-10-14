@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { toErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { useEmbeddedAppContext } from '@/context/EmbeddedAppContext';
+import { useWidgetState } from '@/lib/useWidgetState';
 
 interface MovieCardProps {
   movie: MovieSummary;
@@ -66,6 +67,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const [loading, setLoading] = useState<boolean>(false);
   const [hasSearched, setHasSearched] = useState<boolean>(Boolean(queryParam));
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     setInputValue(queryParam);
@@ -137,6 +139,53 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     }
     navigate(`/torrents/${movie.id}?${params.toString()}`);
   };
+
+  const widgetPayload = useMemo(() => {
+    const route = `${location.pathname}${location.search}`;
+    const activeQuery = queryParam.trim() || inputValue.trim();
+    let summary = 'Ready to search for a movie.';
+    if (loading) {
+      summary = activeQuery ? `Searching for "${activeQuery}"...` : 'Scanning the catalog...';
+    } else if (movies.length > 0) {
+      summary = activeQuery
+        ? `Showing ${movies.length} result${movies.length === 1 ? '' : 's'} for "${activeQuery}".`
+        : `Showing ${movies.length} result${movies.length === 1 ? '' : 's'}.`;
+    } else if (showTopMovies) {
+      summary = `Showing top ${topMovies.length} movie${topMovies.length === 1 ? '' : 's'} this week.`;
+    } else if (hasSearched) {
+      summary = activeQuery
+        ? `No results found for "${activeQuery}".`
+        : 'No results found for the current search.';
+    }
+
+    return {
+      currentRoute: route,
+      routeName: 'search',
+      data: {
+        query: queryParam,
+        inputValue,
+        loading,
+        hasSearched,
+        showTopMovies,
+        movies,
+        topMovies,
+        resultsCount: movies.length,
+      },
+      summary,
+    };
+  }, [
+    location.pathname,
+    location.search,
+    queryParam,
+    inputValue,
+    loading,
+    hasSearched,
+    showTopMovies,
+    movies,
+    topMovies,
+  ]);
+
+  useWidgetState(isEmbeddedApp, widgetPayload);
 
   return (
     <>

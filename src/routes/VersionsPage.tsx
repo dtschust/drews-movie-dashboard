@@ -1,5 +1,12 @@
-import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +26,7 @@ import { toErrorMessage } from '@/lib/errors';
 import type { MovieCacheEntry, MovieCredits, MoviePerson, MovieVersion } from '@/types';
 import { useEmbeddedAppContext } from '@/context/EmbeddedAppContext';
 import { cn } from '@/lib/utils';
+import { useWidgetState } from '@/lib/useWidgetState';
 
 const createEmptyCredits = (): MovieCredits => ({
   writers: [],
@@ -86,6 +94,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
   const [imdbLoading, setImdbLoading] = useState<boolean>(false);
   const [creditsOpen, setCreditsOpen] = useState<boolean>(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const cachedMovie: MovieCacheEntry | undefined = movieCache.get(String(movieId));
   const titleForDisplay = movieTitle || cachedMovie?.title || `Movie ${movieId}`;
@@ -450,6 +459,66 @@ export function VersionsPage({ setError }: VersionsPageProps) {
       </div>
     );
   };
+
+  const widgetPayload = useMemo(() => {
+    const route = `${location.pathname}${location.search}`;
+    let summary = `No versions available for ${titleForDisplay}.`;
+    if (loading) {
+      summary = `Loading versions for ${titleForDisplay}...`;
+    } else if (pendingVersion) {
+      const parts = [
+        pendingVersion.quality,
+        pendingVersion.codec,
+        pendingVersion.container,
+        pendingVersion.source,
+        pendingVersion.resolution,
+      ]
+        .filter((part) => Boolean(part))
+        .join(' / ');
+      summary = `Confirm download of ${parts || 'the selected release'} for ${titleForDisplay}.`;
+    } else if (versions.length > 0) {
+      summary = `Showing ${versions.length} version${versions.length === 1 ? '' : 's'} for ${titleForDisplay}.`;
+    }
+
+    return {
+      currentRoute: route,
+      routeName: 'getVersions',
+      data: {
+        movieId,
+        movieTitle: titleForDisplay,
+        queryTitle: movieTitle,
+        loading,
+        versions,
+        versionsCount: versions.length,
+        synopsis,
+        imdbLoading,
+        credits,
+        hasCredits,
+        creditsOpen,
+        pendingVersion,
+        pendingDialogOpen: Boolean(pendingVersion),
+        cachedMovie,
+      },
+      summary,
+    };
+  }, [
+    location.pathname,
+    location.search,
+    movieId,
+    movieTitle,
+    titleForDisplay,
+    loading,
+    versions,
+    synopsis,
+    imdbLoading,
+    credits,
+    hasCredits,
+    creditsOpen,
+    pendingVersion,
+    cachedMovie,
+  ]);
+
+  useWidgetState(isEmbeddedApp, widgetPayload);
 
   return (
     <div className="space-y-6">
