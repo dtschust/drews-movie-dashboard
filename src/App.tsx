@@ -336,7 +336,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!token) return;
+    if (!token && !isEmbeddedApp) return;
     if (topMoviesRequested.current) return;
     topMoviesRequested.current = true;
 
@@ -362,9 +362,9 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, isEmbeddedApp]);
 
-  if (!token) {
+  if (!token && !isEmbeddedApp) {
     return (
       <div className={containerClassName}>
         <TokenGate
