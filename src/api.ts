@@ -51,39 +51,53 @@ export async function getTopMovies(isEmbeddedApp: boolean = false): Promise<TopM
       const text = await res.text();
       throw new Error(text || `Top movies failed (${res.status})`);
     }
-    return (await res.json()) as TopMoviesResponse;
+    return res.json();
   }
 }
 
-export async function getVersions(id: string | number, title = ''): Promise<VersionsResponse> {
-  const token = getToken();
-  const url = new URL(API_BASE + '/getVersions');
-  url.searchParams.set('id', String(id));
-  url.searchParams.set('title', title ?? '');
-  url.searchParams.set('token', token);
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Get versions failed (${res.status})`);
+export async function getVersions(
+  id: string | number,
+  title = '',
+  isEmbeddedApp: boolean = false,
+): Promise<VersionsResponse> {
+  if (isEmbeddedApp) {
+    const toolResponse = await window.openai.callTool('get-versions', { id, title });
+    return toolResponse?.structuredContent as VersionsResponse;
+  } else {
+    const token = getToken();
+    const url = new URL(API_BASE + '/getVersions');
+    url.searchParams.set('id', String(id));
+    url.searchParams.set('title', title ?? '');
+    url.searchParams.set('token', token);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Get versions failed (${res.status})`);
+    }
+    return res.json();
   }
-  return (await res.json()) as VersionsResponse;
 }
 
-export async function downloadMovie({
-  torrentId,
-  movieTitle,
-}: DownloadRequest): Promise<DownloadResponse> {
+export async function downloadMovie(
+  { torrentId, movieTitle }: DownloadRequest,
+  isEmbeddedApp: boolean = false,
+): Promise<DownloadResponse> {
   const token = getToken();
-  const res = await fetch(API_BASE + '/downloadMovie', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ torrentId, movieTitle, token }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Download failed (${res.status})`);
+  if (isEmbeddedApp) {
+    const toolResponse = await window.openai.callTool('fetch-movie', { torrentId, movieTitle });
+    return toolResponse?.structuredContent as DownloadResponse;
+  } else {
+    const res = await fetch(API_BASE + '/downloadMovie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ torrentId, movieTitle, token }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Download failed (${res.status})`);
+    }
+    return res.json();
   }
-  return (await res.json()) as DownloadResponse;
 }
 
 export async function getImdbDetails(imdbId: string | number): Promise<ImdbDetails> {
@@ -97,5 +111,5 @@ export async function getImdbDetails(imdbId: string | number): Promise<ImdbDetai
     const text = await res.text();
     throw new Error(text || `Could not load IMDb details (${res.status})`);
   }
-  return (await res.json()) as ImdbDetails;
+  return res.json();
 }

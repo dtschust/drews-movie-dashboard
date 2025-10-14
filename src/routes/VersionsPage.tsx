@@ -75,6 +75,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
   const movieId = params.movieId ?? '';
   const [searchParams] = useSearchParams();
   const titleParam = searchParams.get('title') || '';
+  const { isEmbeddedApp } = useEmbeddedAppContext();
   const [movieTitle, setMovieTitle] = useState<string>(titleParam);
   const [versions, setVersions] = useState<MovieVersion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -351,7 +352,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
       setLoading(true);
       setError('');
       try {
-        const { versions: list } = await getVersions(movieId, titleParam);
+        const { versions: list } = await getVersions(movieId, titleParam, isEmbeddedApp);
         if (!cancelled) {
           const nextVersions = Array.isArray(list) ? list : [];
           setVersions(nextVersions);
@@ -370,7 +371,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [movieId, titleParam, setError]);
+  }, [movieId, titleParam, setError, isEmbeddedApp]);
 
   const requestDownload = (version: MovieVersion) => {
     setPendingVersion(version);
@@ -381,7 +382,10 @@ export function VersionsPage({ setError }: VersionsPageProps) {
     setIsSubmitting(true);
     setError('');
     try {
-      await downloadMovie({ torrentId: pendingVersion.id, movieTitle: titleForDisplay });
+      await downloadMovie(
+        { torrentId: pendingVersion.id, movieTitle: titleForDisplay },
+        isEmbeddedApp,
+      );
       setPendingVersion(null);
       const params = new URLSearchParams();
       params.set('movieId', movieId);
