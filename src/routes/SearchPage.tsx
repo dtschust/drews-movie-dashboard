@@ -13,6 +13,14 @@ import { toErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { useEmbeddedAppContext } from '@/context/EmbeddedAppContext';
 import { useWidgetState } from '@/lib/useWidgetState';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface MovieCardProps {
   movie: MovieSummary;
@@ -257,6 +265,8 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const [hasSearched, setHasSearched] = useState<boolean>(Boolean(queryParam));
   const [searchMode, setSearchMode] = useState<SearchMode>(typeParam);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [pendingShow, setPendingShow] = useState<HdbitsTorrentItem | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -365,19 +375,33 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     navigate(`/torrents/${movie.id}?${params.toString()}`);
   };
 
-  const handleShowDownload = async (show: HdbitsTorrentItem) => {
+  const handleShowClick = (show: HdbitsTorrentItem) => {
     if (downloadingId) return;
+    setPendingShow(show);
+    setConfirmOpen(true);
+  };
+
+  const closeDialog = () => {
+    if (downloadingId) return;
+    setConfirmOpen(false);
+    setPendingShow(null);
+  };
+
+  const startShowDownload = async () => {
+    if (!pendingShow || downloadingId) return;
     setError('');
-    setDownloadingId(show.id);
+    setDownloadingId(pendingShow.id);
     try {
-      await downloadTvShow({ torrentId: show.id, title: show.name }, isEmbeddedApp);
+      await downloadTvShow({ torrentId: pendingShow.id, title: pendingShow.name }, isEmbeddedApp);
+      setConfirmOpen(false);
       const params = new URLSearchParams();
-      params.set('title', show.name);
+      params.set('title', pendingShow.name);
       navigate(`/download?${params.toString()}`);
     } catch (error: unknown) {
       console.error(error);
       setError(toErrorMessage(error));
     } finally {
+      setPendingShow(null);
       setDownloadingId(null);
     }
   };
@@ -517,7 +541,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
               torrent={show}
               disabled={Boolean(downloadingId)}
               downloading={downloadingId === show.id}
-              onSelect={() => handleShowDownload(show)}
+              onSelect={() => handleShowClick(show)}
             />
           ))}
         </div>
@@ -546,6 +570,60 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           </div>
         </div>
       )}
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeDialog();
+          } else {
+            setConfirmOpen(true);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start download?</DialogTitle>
+            <DialogDescription>
+              {pendingShow
+                ? `We'll send "${pendingShow.name}" to your downloader right away.`
+                : 'Confirm this download request.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingShow && (
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">{pendingShow.name}</div>
+                {pendingShow.imdb && (
+                  <div className="text-xs text-muted-foreground">
+                    IMDB: {typeof pendingShow.imdb.rating === 'number' ? pendingShow.imdb.rating.toFixed(1) : 'N/A'}
+                    {pendingShow.imdb.year ? ` (${pendingShow.imdb.year})` : ''}
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TvStat label="Size" value={formatSize(pendingShow.size)} />
+                <TvStat label="Seeders" value={pendingShow.seeders} accent />
+                <TvStat
+                  label="Snatched"
+                  value={`${pendingShow.times_completed} time${pendingShow.times_completed === 1 ? '' : 's'}`}
+                />
+                <TvStat label="Added" value={formatAddedDate(pendingShow.added)} />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={closeDialog} disabled={Boolean(downloadingId)}>
+              Cancel
+            </Button>
+            <Button onClick={startShowDownload} disabled={!pendingShow || Boolean(downloadingId)}>
+              {pendingShow && downloadingId === pendingShow.id ? <Spinner /> : 'Start download'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
