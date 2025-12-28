@@ -8,11 +8,11 @@ import { useWidgetState } from '@/lib/useWidgetState';
 export function DownloadPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const movieTitle = searchParams.get('title');
+  const title = searchParams.get('title');
   const location = useLocation();
   const { isEmbeddedApp } = useEmbeddedAppContext();
-  const message = movieTitle
-    ? `Download started for "${movieTitle}". Feel free to queue up another search.`
+  const message = title
+    ? `Download started for "${title}". Feel free to queue up another search.`
     : 'Your download has been initiated successfully. Start another search to keep the queue going.';
 
   const widgetPayload = useMemo(
@@ -20,12 +20,12 @@ export function DownloadPage() {
       currentRoute: `${location.pathname}${location.search}`,
       routeName: 'download',
       data: {
-        movieTitle,
+        title,
         message,
       },
       summary: message,
     }),
-    [location.pathname, location.search, movieTitle, message],
+    [location.pathname, location.search, title, message],
   );
 
   useWidgetState(isEmbeddedApp, widgetPayload);

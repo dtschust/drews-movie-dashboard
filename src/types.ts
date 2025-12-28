@@ -70,6 +70,11 @@ export interface DownloadRequest {
   movieTitle: string;
 }
 
+export interface TvDownloadRequest {
+  torrentId: string | number;
+  title: string;
+}
+
 export interface DownloadResponse {
   ok?: boolean;
   started?: boolean;
@@ -79,4 +84,54 @@ export interface DownloadResponse {
 export interface ImdbDetails {
   credits?: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+export interface HdbitsImdbData {
+  id: number;
+  englishtitle: string;
+  originaltitle: string;
+  year: number;
+  genres: string[];
+  rating: number;
+}
+
+export interface HdbitsTvdbData {
+  id: number;
+  season: number;
+  episode: number;
+}
+
+export interface HdbitsTorrentItem {
+  id: number;
+  hash: string;
+  leechers: number;
+  seeders: number;
+  name: string;
+  descr: string;
+  times_completed: number;
+  size: number;
+  utadded: number;
+  added: string;
+  comments: number;
+  numfiles: number;
+  filename: string;
+  freeleech: 'yes' | 'no';
+  type_category: number;
+  type_codec: number;
+  type_medium: number;
+  type_origin: number;
+  type_exclusive: number;
+  torrent_status: '' | 'seeding' | 'leeching' | 'completed';
+  bookmarked: 0 | 1;
+  wishlisted: 0 | 1;
+  tags: string[];
+  username: string;
+  owner: number;
+  imdb?: HdbitsImdbData;
+  tvdb?: HdbitsTvdbData;
+}
+
+export interface HdbitsSearchResponse {
+  status: number;
+  data: HdbitsTorrentItem[];
 }
