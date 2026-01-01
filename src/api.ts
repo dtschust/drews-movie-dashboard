@@ -8,6 +8,7 @@ import type {
   TvDownloadRequest,
   VersionsResponse,
 } from './types';
+import { formatImdbId } from './lib/imdb';
 
 export const API_BASE = 'https://tools.drew.shoes/movies';
 export const HDBITS_API_BASE = 'https://tools.drew.shoes/hdbits';
@@ -104,11 +105,12 @@ export async function downloadMovie(
 }
 
 export async function getImdbDetails(imdbId: string | number): Promise<ImdbDetails> {
-  if (!imdbId) {
+  const normalizedId = formatImdbId(imdbId);
+  if (!normalizedId) {
     throw new Error('Missing imdb id');
   }
 
-  const url = new URL(`https://api.imdbapi.dev/titles/tt${imdbId}`);
+  const url = new URL(`https://api.imdbapi.dev/titles/${normalizedId}`);
   const res = await fetch(url.toString());
   if (!res.ok) {
     const text = await res.text();

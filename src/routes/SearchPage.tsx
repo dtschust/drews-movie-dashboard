@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/Spinner';
 import { downloadTvShow, getImdbDetails, searchMovies, searchTvShows } from '@/api';
 import { rememberMovies } from '@/lib/movieCache';
+import { formatImdbId } from '@/lib/imdb';
 import type { HdbitsTorrentItem, MovieSummary } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { toErrorMessage } from '@/lib/errors';
@@ -253,7 +254,6 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
             <img
               src={posterUrl}
               alt={`${torrent.name} poster`}
-              className="h-full w-full object-cover"
               loading="lazy"
             />
           </div>
@@ -421,17 +421,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
 
   useEffect(() => {
     const imdbIds = hdbitsResults
-      .map((torrent) => {
-        const imdbId = torrent.imdb?.id;
-        if (typeof imdbId === 'number' && imdbId > 0) {
-          return String(imdbId);
-        }
-        if (typeof imdbId === 'string') {
-          const normalized = imdbId.replace(/^tt/i, '').trim();
-          return normalized || null;
-        }
-        return null;
-      })
+      .map((torrent) => formatImdbId(torrent.imdb?.id))
       .filter((id): id is string => Boolean(id));
 
     const uniqueIds = Array.from(new Set(imdbIds));
@@ -676,13 +666,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
       {!loading && searchMode === 'hdbits' && hdbitsResults.length > 0 && (
         <div className="space-y-3">
           {hdbitsResults.map((torrent) => {
-            const rawImdbId = torrent.imdb?.id;
-            const imdbKey =
-              typeof rawImdbId === 'number' && rawImdbId > 0
-                ? String(rawImdbId)
-                : typeof rawImdbId === 'string'
-                  ? rawImdbId.replace(/^tt/i, '').trim() || null
-                  : null;
+            const imdbKey = formatImdbId(torrent.imdb?.id);
             const posterUrl = imdbKey ? hdbitsPosters[imdbKey] ?? null : null;
             return (
               <TvResultRow
