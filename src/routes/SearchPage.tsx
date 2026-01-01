@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/Spinner';
-import { downloadTvShow, searchMovies, searchTvShows } from '@/api';
+import { downloadTvShow, getImdbDetails, searchMovies, searchTvShows } from '@/api';
 import { rememberMovies } from '@/lib/movieCache';
 import type { HdbitsTorrentItem, MovieSummary } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
@@ -43,7 +43,7 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
         >
           <img
             src={movie.posterUrl}
-            alt={movie.title ?? 'Movie poster'}
+            alt={movie.title ?? 'Torrent poster'}
             className="h-full w-full object-cover"
           />
         </div>
@@ -62,7 +62,78 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
   );
 }
 
-type SearchMode = 'movies' | 'tv';
+const SOURCE_OPTIONS = [
+  { key: 'ptp', label: 'PTP' },
+  { key: 'hdbits', label: 'HDBits' },
+] as const;
+
+type SearchMode = (typeof SOURCE_OPTIONS)[number]['key'];
+
+const DEFAULT_MODE: SearchMode = SOURCE_OPTIONS[0].key;
+
+const isValidMode = (value: string | null | undefined): value is SearchMode =>
+  SOURCE_OPTIONS.some((source) => source.key === value);
+
+const SOURCE_LABELS = SOURCE_OPTIONS.reduce(
+  (acc, source) => {
+    acc[source.key] = source.label;
+    return acc;
+  },
+  {} as Record<SearchMode, string>,
+);
+
+const getImageUrl = (source: unknown): string => {
+  if (!source) return '';
+  if (typeof source === 'string') return source.trim();
+  if (typeof source === 'object') {
+    const record = source as Record<string, unknown>;
+    const candidates = [
+      record.url,
+      record.src,
+      record.href,
+      record.imageUrl,
+      record.link,
+      record.value,
+      record.path,
+      record.poster,
+    ];
+    const found = candidates.find((candidate): candidate is string => typeof candidate === 'string');
+    if (found) {
+      return found.trim();
+    }
+  }
+  return '';
+};
+
+const extractPosterFromImdb = (details: unknown): string => {
+  if (!details || typeof details !== 'object') return '';
+  const record = details as Record<string, unknown>;
+  const directSources = [
+    record.primaryImage,
+    record.image,
+    record.poster,
+    record.primaryPoster,
+    record.primaryimage,
+  ];
+  for (const source of directSources) {
+    const candidate = getImageUrl(source);
+    if (candidate) return candidate;
+  }
+  const collections = [record.results, record.images, record.items];
+  for (const collection of collections) {
+    if (Array.isArray(collection)) {
+      for (const entry of collection) {
+        const candidate =
+          getImageUrl((entry as Record<string, unknown>)?.primaryImage) || getImageUrl(entry);
+        if (candidate) return candidate;
+      }
+    }
+  }
+  if (typeof record.data === 'object' && record.data !== null) {
+    return extractPosterFromImdb(record.data);
+  }
+  return '';
+};
 
 const formatSize = (bytes?: number): string => {
   if (!bytes || Number.isNaN(bytes)) return 'Unknown';
@@ -144,9 +215,10 @@ interface TvResultRowProps {
   disabled: boolean;
   downloading: boolean;
   onSelect: () => void;
+  posterUrl?: string | null;
 }
 
-function TvResultRow({ torrent, disabled, downloading, onSelect }: TvResultRowProps) {
+function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: TvResultRowProps) {
   const imdbRating =
     typeof torrent.imdb?.rating === 'number' ? torrent.imdb.rating.toFixed(1) : null;
   const imdbGenres = Array.isArray(torrent.imdb?.genres) ? torrent.imdb?.genres : [];
@@ -175,74 +247,88 @@ function TvResultRow({ torrent, disabled, downloading, onSelect }: TvResultRowPr
       disabled={disabled}
       aria-busy={downloading}
     >
-      <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-        <span>{torrent.name}</span>
-        {seasonEpisode && (
-          <span className="text-xs font-normal text-muted-foreground">{seasonEpisode}</span>
+      <div className="flex flex-col gap-4 sm:flex-row">
+        {posterUrl && (
+          <div className="w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
+            <img
+              src={posterUrl}
+              alt={`${torrent.name} poster`}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
         )}
-        {torrent.torrent_status && (
-          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase', statusClass)}>
-            {torrent.torrent_status}
-          </span>
-        )}
-        {torrent.freeleech === 'yes' && (
-          <span className="rounded-full bg-lime-500 px-2 py-0.5 text-[10px] font-semibold uppercase text-lime-950">
-            Freeleech
-          </span>
-        )}
-      </div>
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+            <span>{torrent.name}</span>
+            {seasonEpisode && (
+              <span className="text-xs font-normal text-muted-foreground">{seasonEpisode}</span>
+            )}
+            {torrent.torrent_status && (
+              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase', statusClass)}>
+                {torrent.torrent_status}
+              </span>
+            )}
+            {torrent.freeleech === 'yes' && (
+              <span className="rounded-full bg-lime-500 px-2 py-0.5 text-[10px] font-semibold uppercase text-lime-950">
+                Freeleech
+              </span>
+            )}
+          </div>
 
-      {torrent.imdb && (
-        <div className="mt-1 text-xs text-muted-foreground">
-          IMDB: {imdbRating ?? 'N/A'}
-          {torrent.imdb.englishtitle && (
-            <>
-              {' '}
-              · {torrent.imdb.englishtitle}
-            </>
+          {torrent.imdb && (
+            <div className="mt-1 text-xs text-muted-foreground">
+              IMDB: {imdbRating ?? 'N/A'}
+              {torrent.imdb.englishtitle && (
+                <>
+                  {' '}
+                  · {torrent.imdb.englishtitle}
+                </>
+              )}
+              {torrent.imdb.year ? ` (${torrent.imdb.year})` : ''}
+              {imdbGenres.length > 0 && ` · ${imdbGenres.join(', ')}`}
+            </div>
           )}
-          {torrent.imdb.year ? ` (${torrent.imdb.year})` : ''}
-          {imdbGenres.length > 0 && ` · ${imdbGenres.join(', ')}`}
+
+          {torrent.tags?.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {torrent.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <TvStat label="Time Alive" value={formatTimeAlive(torrent.added, torrent.utadded)} />
+            <TvStat label="Size" value={formatSize(torrent.size)} />
+            <TvStat
+              label="Snatched"
+              value={`${torrent.times_completed} time${torrent.times_completed === 1 ? '' : 's'}`}
+            />
+            <TvStat label="Seeders" value={torrent.seeders} accent />
+            <TvStat label="Leechers" value={torrent.leechers} />
+            <TvStat label="Comments" value={torrent.comments} />
+            <TvStat label="Added" value={formatAddedDate(torrent.added)} />
+            <TvStat label="Files" value={torrent.numfiles} />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>Uploaded by {torrent.username || 'Anonymous'}</span>
+            {downloading ? (
+              <span className="flex items-center gap-2 text-primary">
+                <Spinner className="text-primary" />
+                Starting download...
+              </span>
+            ) : (
+              <span>Click to download this torrent</span>
+            )}
+          </div>
         </div>
-      )}
-
-      {torrent.tags?.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {torrent.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <TvStat label="Time Alive" value={formatTimeAlive(torrent.added, torrent.utadded)} />
-        <TvStat label="Size" value={formatSize(torrent.size)} />
-        <TvStat
-          label="Snatched"
-          value={`${torrent.times_completed} time${torrent.times_completed === 1 ? '' : 's'}`}
-        />
-        <TvStat label="Seeders" value={torrent.seeders} accent />
-        <TvStat label="Leechers" value={torrent.leechers} />
-        <TvStat label="Comments" value={torrent.comments} />
-        <TvStat label="Added" value={formatAddedDate(torrent.added)} />
-        <TvStat label="Files" value={torrent.numfiles} />
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>Uploaded by {torrent.username || 'Anonymous'}</span>
-        {downloading ? (
-          <span className="flex items-center gap-2 text-primary">
-            <Spinner className="text-primary" />
-            Starting download...
-          </span>
-        ) : (
-          <span>Click to download this release</span>
-        )}
       </div>
     </button>
   );
@@ -257,18 +343,21 @@ export interface SearchPageProps {
 export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get('query') || '';
-  const typeParam = searchParams.get('type') === 'tv' ? 'tv' : 'movies';
+  const typeParamRaw = searchParams.get('type');
+  const typeParam = isValidMode(typeParamRaw) ? typeParamRaw : DEFAULT_MODE;
   const [inputValue, setInputValue] = useState<string>(queryParam);
   const [movies, setMovies] = useState<MovieSummary[]>([]);
-  const [tvResults, setTvResults] = useState<HdbitsTorrentItem[]>([]);
+  const [hdbitsResults, setHdbitsResults] = useState<HdbitsTorrentItem[]>([]);
+  const [hdbitsPosters, setHdbitsPosters] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [hasSearched, setHasSearched] = useState<boolean>(Boolean(queryParam));
   const [searchMode, setSearchMode] = useState<SearchMode>(typeParam);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [pendingShow, setPendingShow] = useState<HdbitsTorrentItem | null>(null);
+  const [pendingTorrent, setPendingTorrent] = useState<HdbitsTorrentItem | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const sourceLabel = SOURCE_LABELS[searchMode];
 
   useEffect(() => {
     setInputValue(queryParam);
@@ -281,7 +370,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   useEffect(() => {
     if (!queryParam.trim()) {
       setMovies([]);
-      setTvResults([]);
+      setHdbitsResults([]);
       setHasSearched(false);
       setLoading(false);
       return;
@@ -292,13 +381,13 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     async function fetchMoviesOrShows() {
       setLoading(true);
       setError('');
-      if (searchMode === 'movies') {
+      if (searchMode === 'ptp') {
         setMovies([]);
       } else {
-        setTvResults([]);
+        setHdbitsResults([]);
       }
       try {
-        if (searchMode === 'movies') {
+        if (searchMode === 'ptp') {
           const { movies: list } = await searchMovies(queryParam.trim(), isEmbeddedApp);
           if (!cancelled) {
             const nextMovies = Array.isArray(list) ? list : [];
@@ -310,7 +399,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           const response = await searchTvShows(queryParam.trim(), isEmbeddedApp);
           if (!cancelled) {
             const nextShows = Array.isArray(response?.data) ? response.data : [];
-            setTvResults(nextShows);
+            setHdbitsResults(nextShows);
             setHasSearched(true);
           }
         }
@@ -330,8 +419,62 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     };
   }, [queryParam, searchMode, setError, isEmbeddedApp]);
 
+  useEffect(() => {
+    const imdbIds = hdbitsResults
+      .map((torrent) => {
+        const imdbId = torrent.imdb?.id;
+        if (typeof imdbId === 'number' && imdbId > 0) {
+          return String(imdbId);
+        }
+        if (typeof imdbId === 'string') {
+          const normalized = imdbId.replace(/^tt/i, '').trim();
+          return normalized || null;
+        }
+        return null;
+      })
+      .filter((id): id is string => Boolean(id));
+
+    const uniqueIds = Array.from(new Set(imdbIds));
+    const missing = uniqueIds.filter((id) => !(id in hdbitsPosters));
+    if (missing.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchPosters = async () => {
+      await Promise.all(
+        missing.map(async (imdbId) => {
+          try {
+            const details = await getImdbDetails(imdbId);
+            if (cancelled) return;
+            const poster = extractPosterFromImdb(details);
+            setHdbitsPosters((prev) => {
+              if (imdbId in prev) return prev;
+              return { ...prev, [imdbId]: poster || null };
+            });
+          } catch (error) {
+            console.warn('Failed to load IMDb details for torrent', imdbId, error);
+            if (cancelled) return;
+            setHdbitsPosters((prev) => {
+              if (imdbId in prev) return prev;
+              return { ...prev, [imdbId]: null };
+            });
+          }
+        }),
+      );
+    };
+
+    fetchPosters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hdbitsResults, hdbitsPosters]);
+
   const canSearch = inputValue.trim().length > 0;
-  const showTopMovies = !loading && !hasSearched && topMovies?.length > 0 && searchMode === 'movies';
+  const showTopTorrents =
+    !loading && !hasSearched && topMovies?.length > 0 && searchMode === 'ptp';
 
   const updateSearchParams = (nextQuery: string, mode: SearchMode, replace = false) => {
     const params = new URLSearchParams();
@@ -375,33 +518,33 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     navigate(`/torrents/${movie.id}?${params.toString()}`);
   };
 
-  const handleShowClick = (show: HdbitsTorrentItem) => {
+  const handleTorrentClick = (torrent: HdbitsTorrentItem) => {
     if (downloadingId) return;
-    setPendingShow(show);
+    setPendingTorrent(torrent);
     setConfirmOpen(true);
   };
 
   const closeDialog = () => {
     if (downloadingId) return;
     setConfirmOpen(false);
-    setPendingShow(null);
+    setPendingTorrent(null);
   };
 
-  const startShowDownload = async () => {
-    if (!pendingShow || downloadingId) return;
+  const startTorrentDownload = async () => {
+    if (!pendingTorrent || downloadingId) return;
     setError('');
-    setDownloadingId(pendingShow.id);
+    setDownloadingId(pendingTorrent.id);
     try {
-      await downloadTvShow({ torrentId: pendingShow.id, title: pendingShow.name }, isEmbeddedApp);
+      await downloadTvShow({ torrentId: pendingTorrent.id, title: pendingTorrent.name }, isEmbeddedApp);
       setConfirmOpen(false);
       const params = new URLSearchParams();
-      params.set('title', pendingShow.name);
+      params.set('title', pendingTorrent.name);
       navigate(`/download?${params.toString()}`);
     } catch (error: unknown) {
       console.error(error);
       setError(toErrorMessage(error));
     } finally {
-      setPendingShow(null);
+      setPendingTorrent(null);
       setDownloadingId(null);
     }
   };
@@ -409,24 +552,27 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const widgetPayload = useMemo(() => {
     const route = `${location.pathname}${location.search}`;
     const activeQuery = queryParam.trim() || inputValue.trim();
-    const isTvMode = searchMode === 'tv';
-    const activeResults = isTvMode ? tvResults : movies;
-    let summary = isTvMode ? 'Ready to search for a show.' : 'Ready to search for a movie.';
+    const isHdbitsMode = searchMode === 'hdbits';
+    const activeResults = isHdbitsMode ? hdbitsResults : movies;
+    const sourceName = SOURCE_LABELS[searchMode];
+    const nounSingular = 'Torrent';
+    const nounPlural = 'Torrents';
+    const resultLabel = activeResults.length === 1 ? nounSingular : nounPlural;
+    let summary = `Ready to search ${sourceName} ${nounPlural}.`;
     if (loading) {
-      const noun = isTvMode ? 'show' : 'movie';
       summary = activeQuery
-        ? `Searching for a ${noun} matching "${activeQuery}"...`
-        : `Scanning the ${isTvMode ? 'TV' : 'movie'} catalog...`;
+        ? `Searching for ${nounPlural} matching "${activeQuery}" on ${sourceName}...`
+        : `Scanning the ${sourceName} catalog for ${nounPlural}...`;
     } else if (activeResults.length > 0) {
       summary = activeQuery
-        ? `Showing ${activeResults.length} result${activeResults.length === 1 ? '' : 's'} for "${activeQuery}".`
-        : `Showing ${activeResults.length} result${activeResults.length === 1 ? '' : 's'}.`;
-    } else if (showTopMovies) {
-      summary = `Showing top ${topMovies.length} movie${topMovies.length === 1 ? '' : 's'} this week.`;
+        ? `Showing ${activeResults.length} ${resultLabel} for "${activeQuery}" from ${sourceName}.`
+        : `Showing ${activeResults.length} ${resultLabel} from ${sourceName}.`;
+    } else if (showTopTorrents) {
+      const topLabel = topMovies.length === 1 ? nounSingular : nounPlural;
+      summary = `Showing top ${topMovies.length} ${topLabel} this week.`;
     } else if (hasSearched) {
-      summary = activeQuery
-        ? `No ${isTvMode ? 'shows' : 'movies'} found for "${activeQuery}".`
-        : `No ${isTvMode ? 'shows' : 'movies'} found for the current search.`;
+      const target = activeQuery ? `"${activeQuery}"` : 'the current search';
+      summary = `No ${nounPlural} found for ${target} on ${sourceName}.`;
     }
 
     return {
@@ -437,12 +583,13 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
         inputValue,
         loading,
         hasSearched,
-        showTopMovies,
+        showTopTorrents,
         movies,
-        tvResults,
+        hdbitsResults,
         topMovies,
         resultsCount: activeResults.length,
         searchMode,
+        sourceLabel: sourceName,
       },
       summary,
     };
@@ -453,10 +600,10 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     inputValue,
     loading,
     hasSearched,
-    showTopMovies,
+    showTopTorrents,
     movies,
     topMovies,
-    tvResults,
+    hdbitsResults,
     searchMode,
   ]);
 
@@ -472,28 +619,21 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
         )}
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant={searchMode === 'movies' ? 'default' : 'outline'}
-              onClick={() => handleModeChange('movies')}
-              size="sm"
-            >
-              Movies
-            </Button>
-            <Button
-              type="button"
-              variant={searchMode === 'tv' ? 'default' : 'outline'}
-              onClick={() => handleModeChange('tv')}
-              size="sm"
-            >
-              TV Shows
-            </Button>
+            {SOURCE_OPTIONS.map((source) => (
+              <Button
+                key={source.key}
+                type="button"
+                variant={searchMode === source.key ? 'default' : 'outline'}
+                onClick={() => handleModeChange(source.key)}
+                size="sm"
+              >
+                {source.label}
+              </Button>
+            ))}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input
-              placeholder={
-                searchMode === 'tv' ? 'Type a TV show title or episode...' : 'Type a movie title...'
-              }
+              placeholder="Type a torrent title or keyword..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
@@ -505,7 +645,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
               onClick={doSearch}
               disabled={!canSearch || loading}
             >
-              {loading ? <Spinner /> : searchMode === 'tv' ? 'Search Shows' : 'Search Movies'}
+              {loading ? <Spinner /> : 'Search Torrents'}
             </Button>
           </div>
         </CardContent>
@@ -514,11 +654,11 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Spinner />
-          <span>{searchMode === 'tv' ? 'Searching TV catalog...' : 'Scanning the catalog...'}</span>
+          <span>{`Searching ${sourceLabel} Torrents...`}</span>
         </div>
       )}
 
-      {!loading && searchMode === 'movies' && movies.length > 0 && (
+      {!loading && searchMode === 'ptp' && movies.length > 0 && (
         <div>
           <div
             className={cn(
@@ -533,30 +673,39 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
         </div>
       )}
 
-      {!loading && searchMode === 'tv' && tvResults.length > 0 && (
+      {!loading && searchMode === 'hdbits' && hdbitsResults.length > 0 && (
         <div className="space-y-3">
-          {tvResults.map((show) => (
-            <TvResultRow
-              key={show.id}
-              torrent={show}
-              disabled={Boolean(downloadingId)}
-              downloading={downloadingId === show.id}
-              onSelect={() => handleShowClick(show)}
-            />
-          ))}
+          {hdbitsResults.map((torrent) => {
+            const rawImdbId = torrent.imdb?.id;
+            const imdbKey =
+              typeof rawImdbId === 'number' && rawImdbId > 0
+                ? String(rawImdbId)
+                : typeof rawImdbId === 'string'
+                  ? rawImdbId.replace(/^tt/i, '').trim() || null
+                  : null;
+            const posterUrl = imdbKey ? hdbitsPosters[imdbKey] ?? null : null;
+            return (
+              <TvResultRow
+                key={torrent.id}
+                torrent={torrent}
+                disabled={Boolean(downloadingId)}
+                downloading={downloadingId === torrent.id}
+                onSelect={() => handleTorrentClick(torrent)}
+                posterUrl={posterUrl}
+              />
+            );
+          })}
         </div>
       )}
 
-      {!loading && searchMode === 'tv' && hasSearched && tvResults.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No TV results found. Try a different show title.
-        </p>
+      {!loading && searchMode === 'hdbits' && hasSearched && hdbitsResults.length === 0 && (
+        <p className="text-sm text-muted-foreground">{`No ${sourceLabel} Torrents found. Try a different search.`}</p>
       )}
 
-      {showTopMovies && (
+      {showTopTorrents && (
         <div>
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Top Movies this Week
+            Top Torrents this Week
           </div>
           <div
             className={cn(
@@ -585,31 +734,31 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           <DialogHeader>
             <DialogTitle>Start download?</DialogTitle>
             <DialogDescription>
-              {pendingShow
-                ? `We'll send "${pendingShow.name}" to your downloader right away.`
-                : 'Confirm this download request.'}
+              {pendingTorrent
+                ? `We'll send "${pendingTorrent.name}" to your downloader right away.`
+                : 'Confirm this torrent request.'}
             </DialogDescription>
           </DialogHeader>
 
-          {pendingShow && (
+          {pendingTorrent && (
             <div className="space-y-3">
               <div>
-                <div className="text-sm font-semibold text-foreground">{pendingShow.name}</div>
-                {pendingShow.imdb && (
+                <div className="text-sm font-semibold text-foreground">{pendingTorrent.name}</div>
+                {pendingTorrent.imdb && (
                   <div className="text-xs text-muted-foreground">
-                    IMDB: {typeof pendingShow.imdb.rating === 'number' ? pendingShow.imdb.rating.toFixed(1) : 'N/A'}
-                    {pendingShow.imdb.year ? ` (${pendingShow.imdb.year})` : ''}
+                    IMDB: {typeof pendingTorrent.imdb.rating === 'number' ? pendingTorrent.imdb.rating.toFixed(1) : 'N/A'}
+                    {pendingTorrent.imdb.year ? ` (${pendingTorrent.imdb.year})` : ''}
                   </div>
                 )}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <TvStat label="Size" value={formatSize(pendingShow.size)} />
-                <TvStat label="Seeders" value={pendingShow.seeders} accent />
+                <TvStat label="Size" value={formatSize(pendingTorrent.size)} />
+                <TvStat label="Seeders" value={pendingTorrent.seeders} accent />
                 <TvStat
                   label="Snatched"
-                  value={`${pendingShow.times_completed} time${pendingShow.times_completed === 1 ? '' : 's'}`}
+                  value={`${pendingTorrent.times_completed} time${pendingTorrent.times_completed === 1 ? '' : 's'}`}
                 />
-                <TvStat label="Added" value={formatAddedDate(pendingShow.added)} />
+                <TvStat label="Added" value={formatAddedDate(pendingTorrent.added)} />
               </div>
             </div>
           )}
@@ -618,8 +767,8 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             <Button variant="outline" onClick={closeDialog} disabled={Boolean(downloadingId)}>
               Cancel
             </Button>
-            <Button onClick={startShowDownload} disabled={!pendingShow || Boolean(downloadingId)}>
-              {pendingShow && downloadingId === pendingShow.id ? <Spinner /> : 'Start download'}
+            <Button onClick={startTorrentDownload} disabled={!pendingTorrent || Boolean(downloadingId)}>
+              {pendingTorrent && downloadingId === pendingTorrent.id ? <Spinner /> : 'Start download'}
             </Button>
           </DialogFooter>
         </DialogContent>
