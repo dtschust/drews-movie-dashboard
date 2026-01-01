@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,13 @@ const SOURCE_LABELS = SOURCE_OPTIONS.reduce(
   },
   {} as Record<SearchMode, string>,
 );
+
+const POSTER_BATCH_SIZE = 5;
+
+interface PosterCacheEntry {
+  posterUrl: string | null;
+  status: 'success' | 'error';
+}
 
 const getImageUrl = (source: unknown): string => {
   if (!source) return '';
@@ -334,6 +341,35 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
   );
 }
 
+interface PosterBatchObserverProps {
+  onLoadNext: () => void;
+}
+
+function PosterBatchObserver({ onLoadNext }: PosterBatchObserverProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const triggeredRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || triggeredRef.current) return;
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && !triggeredRef.current) {
+          triggeredRef.current = true;
+          obs.disconnect();
+          onLoadNext();
+        }
+      });
+    }, { rootMargin: '200px 0px' });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [onLoadNext]);
+
+  return <div ref={ref} aria-hidden className="h-1 w-full opacity-0" />;
+}
+
 export interface SearchPageProps {
   topMovies: MovieSummary[];
   setError: Dispatch<SetStateAction<string>>;
@@ -348,7 +384,8 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const [inputValue, setInputValue] = useState<string>(queryParam);
   const [movies, setMovies] = useState<MovieSummary[]>([]);
   const [hdbitsResults, setHdbitsResults] = useState<HdbitsTorrentItem[]>([]);
-  const [hdbitsPosters, setHdbitsPosters] = useState<Record<string, string | null>>({});
+  const [hdbitsPosters, setHdbitsPosters] = useState<Record<string, PosterCacheEntry>>({});
+  const [posterFetchThreshold, setPosterFetchThreshold] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [hasSearched, setHasSearched] = useState<boolean>(Boolean(queryParam));
   const [searchMode, setSearchMode] = useState<SearchMode>(typeParam);
@@ -358,6 +395,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const navigate = useNavigate();
   const location = useLocation();
   const sourceLabel = SOURCE_LABELS[searchMode];
+  const pendingPosterIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setInputValue(queryParam);
@@ -366,6 +404,75 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   useEffect(() => {
     setSearchMode(typeParam);
   }, [typeParam]);
+
+  useEffect(() => {
+    if (hdbitsResults.length === 0) {
+      setPosterFetchThreshold(0);
+      return;
+    }
+    setPosterFetchThreshold(Math.min(POSTER_BATCH_SIZE, hdbitsResults.length));
+  }, [hdbitsResults]);
+
+  useEffect(() => {
+    if (searchMode !== 'hdbits') return;
+    if (posterFetchThreshold <= 0) return;
+    const eligibleResults = hdbitsResults.slice(0, posterFetchThreshold);
+    const candidateIds = eligibleResults
+      .map((torrent) => formatImdbId(torrent.imdb?.id))
+      .filter((id): id is string => Boolean(id));
+    if (candidateIds.length === 0) return;
+    const uniqueIds = Array.from(new Set(candidateIds));
+    const toFetch = uniqueIds.filter((id) => {
+      if (pendingPosterIds.current.has(id)) return false;
+      const entry = hdbitsPosters[id];
+      if (entry?.status === 'success') return false;
+      if (entry?.status === 'error') return false;
+      return true;
+    });
+    if (toFetch.length === 0) return;
+
+    const batch = toFetch.slice(0, POSTER_BATCH_SIZE);
+    batch.forEach((id) => pendingPosterIds.current.add(id));
+    let cancelled = false;
+
+    const fetchBatch = async () => {
+      await Promise.all(
+        batch.map(async (imdbId) => {
+          try {
+            const details = await getImdbDetails(imdbId);
+            if (cancelled) return;
+            const poster = extractPosterFromImdb(details) || null;
+            setHdbitsPosters((prev) => {
+              if (prev[imdbId]?.status === 'success') return prev;
+              return {
+                ...prev,
+                [imdbId]: { posterUrl: poster, status: 'success' },
+              };
+            });
+          } catch (error) {
+            console.warn('Failed to load IMDb details for torrent', imdbId, error);
+            if (cancelled) return;
+            setHdbitsPosters((prev) => {
+              if (prev[imdbId]?.status === 'error') return prev;
+              return {
+                ...prev,
+                [imdbId]: { posterUrl: null, status: 'error' },
+              };
+            });
+          } finally {
+            pendingPosterIds.current.delete(imdbId);
+          }
+        }),
+      );
+    };
+
+    fetchBatch();
+
+    return () => {
+      cancelled = true;
+      batch.forEach((id) => pendingPosterIds.current.delete(id));
+    };
+  }, [hdbitsResults, hdbitsPosters, posterFetchThreshold, searchMode]);
 
   useEffect(() => {
     if (!queryParam.trim()) {
@@ -419,48 +526,13 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     };
   }, [queryParam, searchMode, setError, isEmbeddedApp]);
 
-  useEffect(() => {
-    const imdbIds = hdbitsResults
-      .map((torrent) => formatImdbId(torrent.imdb?.id))
-      .filter((id): id is string => Boolean(id));
-
-    const uniqueIds = Array.from(new Set(imdbIds));
-    const missing = uniqueIds.filter((id) => !(id in hdbitsPosters));
-    if (missing.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchPosters = async () => {
-      await Promise.all(
-        missing.map(async (imdbId) => {
-          try {
-            const details = await getImdbDetails(imdbId);
-            if (cancelled) return;
-            const poster = extractPosterFromImdb(details);
-            setHdbitsPosters((prev) => {
-              if (imdbId in prev) return prev;
-              return { ...prev, [imdbId]: poster || null };
-            });
-          } catch (error) {
-            console.warn('Failed to load IMDb details for torrent', imdbId, error);
-            if (cancelled) return;
-            setHdbitsPosters((prev) => {
-              if (imdbId in prev) return prev;
-              return { ...prev, [imdbId]: null };
-            });
-          }
-        }),
-      );
-    };
-
-    fetchPosters();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hdbitsResults, hdbitsPosters]);
+  const requestMorePosters = useCallback(() => {
+    setPosterFetchThreshold((prev) => {
+      if (hdbitsResults.length === 0) return prev;
+      if (prev >= hdbitsResults.length) return prev;
+      return Math.min(prev + POSTER_BATCH_SIZE, hdbitsResults.length);
+    });
+  }, [hdbitsResults.length]);
 
   const canSearch = inputValue.trim().length > 0;
   const showTopTorrents =
@@ -665,18 +737,25 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
 
       {!loading && searchMode === 'hdbits' && hdbitsResults.length > 0 && (
         <div className="space-y-3">
-          {hdbitsResults.map((torrent) => {
+          {hdbitsResults.map((torrent, index) => {
+            const showTrigger =
+              posterFetchThreshold >= POSTER_BATCH_SIZE &&
+              posterFetchThreshold < hdbitsResults.length &&
+              index === posterFetchThreshold;
             const imdbKey = formatImdbId(torrent.imdb?.id);
-            const posterUrl = imdbKey ? hdbitsPosters[imdbKey] ?? null : null;
+            const posterEntry = imdbKey ? hdbitsPosters[imdbKey] : undefined;
+            const posterUrl = posterEntry?.posterUrl ?? null;
             return (
-              <TvResultRow
-                key={torrent.id}
-                torrent={torrent}
-                disabled={Boolean(downloadingId)}
-                downloading={downloadingId === torrent.id}
-                onSelect={() => handleTorrentClick(torrent)}
-                posterUrl={posterUrl}
-              />
+              <Fragment key={`${torrent.id}-${index}`}>
+                {showTrigger && <PosterBatchObserver onLoadNext={requestMorePosters} />}
+                <TvResultRow
+                  torrent={torrent}
+                  disabled={Boolean(downloadingId)}
+                  downloading={downloadingId === torrent.id}
+                  onSelect={() => handleTorrentClick(torrent)}
+                  posterUrl={posterUrl}
+                />
+              </Fragment>
             );
           })}
         </div>
