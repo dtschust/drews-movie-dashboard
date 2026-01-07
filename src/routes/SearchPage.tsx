@@ -142,6 +142,16 @@ const getPendingTorrentTitle = (pending: PendingTorrent): string =>
     ? pending.torrent.name
     : pending.torrent.ReleaseName ?? pending.torrent.GroupName ?? '';
 
+const IP_APPROVALS_URL =
+  'https://broadcasthe.net/user.php?action=edit&userid=1527214#section5.editprofile';
+
+const getSearchErrorMessage = (response: unknown): string | null => {
+  if (!response || typeof response !== 'object') return null;
+  const error = (response as { error?: { message?: unknown } }).error;
+  const message = error?.message;
+  return typeof message === 'string' ? message : null;
+};
+
 const getImageUrl = (source: unknown): string => {
   if (!source) return '';
   if (typeof source === 'string') return source.trim();
@@ -612,6 +622,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const [downloadingKey, setDownloadingKey] = useState<string | number | null>(null);
   const [pendingTorrent, setPendingTorrent] = useState<PendingTorrent | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+  const [ipApprovalError, setIpApprovalError] = useState<string>('');
   const navigate = useNavigate();
   const location = useLocation();
   const sourceLabel = SOURCE_LABELS[searchMode];
@@ -718,6 +729,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     async function fetchMoviesOrShows() {
       setLoading(true);
       setError('');
+      setIpApprovalError('');
       if (searchMode === 'ptp') {
         setMovies([]);
       } else if (searchMode === 'hdbits') {
@@ -736,6 +748,16 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           }
         } else if (searchMode === 'hdbits') {
           const response = await searchTvShows(queryParam.trim(), isEmbeddedApp);
+          const approvalMessage = getSearchErrorMessage(response);
+          if (approvalMessage) {
+            if (!cancelled) {
+              setIpApprovalError(approvalMessage);
+              setHasSearched(false);
+              setHdbitsResults([]);
+              setBtnResults([]);
+            }
+            return;
+          }
           if (!cancelled) {
             const nextShows = Array.isArray(response?.data) ? response.data : [];
             setHdbitsResults(nextShows);
@@ -743,6 +765,16 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           }
         } else {
           const response = await searchBtnTorrents(queryParam.trim());
+          const approvalMessage = getSearchErrorMessage(response);
+          if (approvalMessage) {
+            if (!cancelled) {
+              setIpApprovalError(approvalMessage);
+              setHasSearched(false);
+              setHdbitsResults([]);
+              setBtnResults([]);
+            }
+            return;
+          }
           if (!cancelled) {
             const torrentMap = response?.result?.torrents;
             const nextShows = torrentMap ? Object.values(torrentMap) : [];
@@ -838,6 +870,10 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     if (downloadingKey) return;
     setConfirmOpen(false);
     setPendingTorrent(null);
+  };
+
+  const closeIpDialog = () => {
+    setIpApprovalError('');
   };
 
   const startTorrentDownload = async () => {
@@ -1124,6 +1160,31 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
                 'Start download'
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(ipApprovalError)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeIpDialog();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Authorization Required</DialogTitle>
+            <DialogDescription>
+              <span className="whitespace-pre-line">{ipApprovalError}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button asChild variant="outline">
+              <a href={IP_APPROVALS_URL} target="_blank" rel="noreferrer">
+                View IP Approvals
+              </a>
+            </Button>
+            <Button onClick={closeIpDialog}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
