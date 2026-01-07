@@ -1,4 +1,6 @@
 import type {
+  BtnDownloadRequest,
+  BtnSearchResponse,
   DownloadRequest,
   DownloadResponse,
   HdbitsSearchResponse,
@@ -12,6 +14,7 @@ import { formatImdbId } from './lib/imdb';
 
 export const API_BASE = 'https://tools.drew.shoes/movies';
 export const HDBITS_API_BASE = 'https://tools.drew.shoes/hdbits';
+export const BTN_API_BASE = 'https://tools.drew.shoes/btn';
 
 function getToken(): string {
   try {
@@ -170,6 +173,36 @@ export async function downloadTvShow(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `TV download failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function searchBtnTorrents(query: string): Promise<BtnSearchResponse> {
+  const token = getToken();
+  const url = new URL(BTN_API_BASE + '/search');
+  url.searchParams.set('query', query);
+  url.searchParams.set('token', token);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `BTN search failed (${res.status})`);
+  }
+  return (await res.json()) as BtnSearchResponse;
+}
+
+export async function downloadBtnTorrent({
+  downloadUrl,
+  title,
+}: BtnDownloadRequest): Promise<DownloadResponse> {
+  const token = getToken();
+  const res = await fetch(BTN_API_BASE + '/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ downloadUrl, title, token }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `BTN download failed (${res.status})`);
   }
   return res.json();
 }

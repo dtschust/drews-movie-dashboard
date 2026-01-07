@@ -75,6 +75,11 @@ export interface TvDownloadRequest {
   title: string;
 }
 
+export interface BtnDownloadRequest {
+  downloadUrl: string;
+  title: string;
+}
+
 export interface DownloadResponse {
   ok?: boolean;
   started?: boolean;
@@ -134,4 +139,42 @@ export interface HdbitsTorrentItem {
 export interface HdbitsSearchResponse {
   status: number;
   data: HdbitsTorrentItem[];
+}
+
+export interface BtnTorrentItem {
+  GroupName?: string;
+  GroupID?: string;
+  TorrentID?: string;
+  SeriesID?: string;
+  Series?: string;
+  SeriesBanner?: string;
+  SeriesPoster?: string;
+  YoutubeTrailer?: string;
+  Category?: string;
+  Snatched?: string;
+  Seeders?: string;
+  Leechers?: string;
+  Source?: string;
+  Container?: string;
+  Codec?: string;
+  Resolution?: string;
+  Origin?: string;
+  ReleaseName?: string;
+  Size?: string;
+  Time?: string;
+  TvdbID?: string;
+  TvrageID?: string;
+  ImdbID?: string;
+  InfoHash?: string;
+  Tags?: string[];
+  Genres?: string[];
+  DownloadURL?: string;
+}
+
+export interface BtnSearchResponse {
+  id?: number;
+  result?: {
+    results?: string;
+    torrents?: Record<string, BtnTorrentItem>;
+  };
 }

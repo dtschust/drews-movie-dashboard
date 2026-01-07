@@ -5,10 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/Spinner';
-import { downloadTvShow, getImdbDetails, searchMovies, searchTvShows } from '@/api';
+import {
+  downloadBtnTorrent,
+  downloadTvShow,
+  getImdbDetails,
+  searchBtnTorrents,
+  searchMovies,
+  searchTvShows,
+} from '@/api';
 import { rememberMovies } from '@/lib/movieCache';
 import { formatImdbId } from '@/lib/imdb';
-import type { HdbitsTorrentItem, MovieSummary } from '@/types';
+import type { BtnTorrentItem, HdbitsTorrentItem, MovieSummary } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { toErrorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
@@ -66,6 +73,7 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
 const SOURCE_OPTIONS = [
   { key: 'ptp', label: 'PTP' },
   { key: 'hdbits', label: 'HDBits' },
+  { key: 'btn', label: 'BTN' },
 ] as const;
 
 type SearchMode = (typeof SOURCE_OPTIONS)[number]['key'];
@@ -89,6 +97,50 @@ interface PosterCacheEntry {
   posterUrl: string | null;
   status: 'success' | 'error';
 }
+
+type TvSourceMode = Extract<SearchMode, 'hdbits' | 'btn'>;
+
+type PendingTorrent =
+  | { source: 'hdbits'; torrent: HdbitsTorrentItem }
+  | { source: 'btn'; torrent: BtnTorrentItem };
+
+const isTvMode = (mode: SearchMode): mode is TvSourceMode => mode === 'hdbits' || mode === 'btn';
+
+const normalizePosterUrl = (poster?: string | null): string | null => {
+  if (!poster) return null;
+  const trimmed = poster.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`;
+  }
+  return trimmed;
+};
+
+const formatBtnStatValue = (value?: string): number => {
+  if (typeof value !== 'string' || value.trim().length === 0) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getBtnTorrentKey = (torrent: BtnTorrentItem): string => {
+  return (
+    torrent.TorrentID ??
+    torrent.DownloadURL ??
+    torrent.ReleaseName ??
+    `${torrent.GroupID ?? ''}-${torrent.GroupName ?? ''}`
+  );
+};
+
+const getPendingTorrentKey = (pending: PendingTorrent): string | number =>
+  pending.source === 'hdbits' ? pending.torrent.id : getBtnTorrentKey(pending.torrent);
+
+const getPendingTorrentTitle = (pending: PendingTorrent): string =>
+  pending.source === 'hdbits'
+    ? pending.torrent.name
+    : pending.torrent.ReleaseName ?? pending.torrent.GroupName ?? '';
 
 const getImageUrl = (source: unknown): string => {
   if (!source) return '';
@@ -341,6 +393,173 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
   );
 }
 
+interface BtnResultRowProps {
+  torrent: BtnTorrentItem;
+  disabled: boolean;
+  downloading: boolean;
+  onSelect: () => void;
+  posterUrl?: string | null;
+}
+
+function BtnResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: BtnResultRowProps) {
+  const releaseName = torrent.ReleaseName ?? torrent.GroupName ?? 'Unknown release';
+  const secondaryLine = [torrent.Series, torrent.GroupName].filter(Boolean).join(' · ');
+  const qualityDetails = [torrent.Resolution, torrent.Source, torrent.Codec, torrent.Container]
+    .map((detail) => detail?.trim())
+    .filter((detail): detail is string => Boolean(detail))
+    .join(' · ');
+  const snatchedCount = formatBtnStatValue(torrent.Snatched);
+  const seeders = formatBtnStatValue(torrent.Seeders);
+  const leechers = formatBtnStatValue(torrent.Leechers);
+  const sizeBytes = Number(torrent.Size);
+  const timeSeconds = formatBtnStatValue(torrent.Time);
+  const addedIso = timeSeconds ? new Date(timeSeconds * 1000).toISOString() : '';
+  const artworkUrl = posterUrl ?? normalizePosterUrl(torrent.SeriesPoster);
+  const tags = Array.isArray(torrent.Tags) ? torrent.Tags : [];
+  const genres = Array.isArray(torrent.Genres) ? torrent.Genres : [];
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        'w-full rounded-2xl border border-border/50 bg-background/60 p-4 text-left transition hover:border-primary/60 hover:bg-background',
+        disabled && !downloading && 'cursor-not-allowed opacity-60 hover:border-border/50',
+        downloading && 'ring-1 ring-primary/40',
+      )}
+      onClick={onSelect}
+      disabled={disabled}
+      aria-busy={downloading}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row">
+        {artworkUrl && (
+          <div className="w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
+            <img src={artworkUrl} alt={`${releaseName} poster`} loading="lazy" />
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+            <span>{releaseName}</span>
+            {torrent.Category && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                {torrent.Category}
+              </span>
+            )}
+            {torrent.Origin && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                {torrent.Origin}
+              </span>
+            )}
+          </div>
+
+          {secondaryLine && (
+            <div className="mt-1 text-xs text-muted-foreground">{secondaryLine}</div>
+          )}
+
+          {qualityDetails && (
+            <div className="mt-2 text-xs text-muted-foreground">{qualityDetails}</div>
+          )}
+
+          {(tags.length > 0 || genres.length > 0) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[...tags, ...genres].map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <TvStat label="Time Alive" value={formatTimeAlive(addedIso, timeSeconds)} />
+            <TvStat label="Size" value={formatSize(sizeBytes)} />
+            <TvStat
+              label="Snatched"
+              value={`${snatchedCount} time${snatchedCount === 1 ? '' : 's'}`}
+            />
+            <TvStat label="Seeders" value={seeders} accent />
+            <TvStat label="Leechers" value={leechers} />
+            <TvStat label="TVDB" value={torrent.TvdbID ?? 'Unknown'} />
+            <TvStat label="IMDB" value={torrent.ImdbID ? formatImdbId(torrent.ImdbID) : 'Unknown'} />
+            <TvStat
+              label="Added"
+              value={addedIso ? formatAddedDate(addedIso) : formatAddedDate('')}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>{torrent.Series ? `From ${torrent.Series}` : 'BTN release'}</span>
+            {downloading ? (
+              <span className="flex items-center gap-2 text-primary">
+                <Spinner className="text-primary" />
+                Starting download...
+              </span>
+            ) : (
+              <span>Click to download this torrent</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function PendingHdbitsDetails({ torrent }: { torrent: HdbitsTorrentItem }) {
+  return (
+    <>
+      <div>
+        <div className="text-sm font-semibold text-foreground">{torrent.name}</div>
+        {torrent.imdb && (
+          <div className="text-xs text-muted-foreground">
+            IMDB:{' '}
+            {typeof torrent.imdb.rating === 'number' ? torrent.imdb.rating.toFixed(1) : 'N/A'}
+            {torrent.imdb.year ? ` (${torrent.imdb.year})` : ''}
+          </div>
+        )}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TvStat label="Size" value={formatSize(torrent.size)} />
+        <TvStat label="Seeders" value={torrent.seeders} accent />
+        <TvStat
+          label="Snatched"
+          value={`${torrent.times_completed} time${torrent.times_completed === 1 ? '' : 's'}`}
+        />
+        <TvStat label="Added" value={formatAddedDate(torrent.added)} />
+      </div>
+    </>
+  );
+}
+
+function PendingBtnDetails({ torrent }: { torrent: BtnTorrentItem }) {
+  const title = torrent.ReleaseName ?? torrent.GroupName ?? 'BTN Torrent';
+  const subtitle = [torrent.Series, torrent.GroupName].filter(Boolean).join(' · ');
+  const snatchedCount = formatBtnStatValue(torrent.Snatched);
+  const timeSeconds = formatBtnStatValue(torrent.Time);
+  const addedIso = timeSeconds ? new Date(timeSeconds * 1000).toISOString() : '';
+  return (
+    <>
+      <div>
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TvStat label="Size" value={formatSize(Number(torrent.Size))} />
+        <TvStat label="Seeders" value={formatBtnStatValue(torrent.Seeders)} accent />
+        <TvStat
+          label="Snatched"
+          value={`${snatchedCount} time${snatchedCount === 1 ? '' : 's'}`}
+        />
+        <TvStat
+          label="Added"
+          value={addedIso ? formatAddedDate(addedIso) : formatAddedDate('')}
+        />
+      </div>
+    </>
+  );
+}
+
 interface PosterBatchObserverProps {
   onLoadNext: () => void;
 }
@@ -384,13 +603,14 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   const [inputValue, setInputValue] = useState<string>(queryParam);
   const [movies, setMovies] = useState<MovieSummary[]>([]);
   const [hdbitsResults, setHdbitsResults] = useState<HdbitsTorrentItem[]>([]);
-  const [hdbitsPosters, setHdbitsPosters] = useState<Record<string, PosterCacheEntry>>({});
+  const [btnResults, setBtnResults] = useState<BtnTorrentItem[]>([]);
+  const [posterCache, setPosterCache] = useState<Record<string, PosterCacheEntry>>({});
   const [posterFetchThreshold, setPosterFetchThreshold] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [hasSearched, setHasSearched] = useState<boolean>(Boolean(queryParam));
   const [searchMode, setSearchMode] = useState<SearchMode>(typeParam);
-  const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [pendingTorrent, setPendingTorrent] = useState<HdbitsTorrentItem | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | number | null>(null);
+  const [pendingTorrent, setPendingTorrent] = useState<PendingTorrent | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -406,25 +626,34 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   }, [typeParam]);
 
   useEffect(() => {
-    if (hdbitsResults.length === 0) {
+    if (!isTvMode(searchMode)) {
       setPosterFetchThreshold(0);
       return;
     }
-    setPosterFetchThreshold(Math.min(POSTER_BATCH_SIZE, hdbitsResults.length));
-  }, [hdbitsResults]);
+    const activeResults = searchMode === 'hdbits' ? hdbitsResults : btnResults;
+    if (activeResults.length === 0) {
+      setPosterFetchThreshold(0);
+      return;
+    }
+    setPosterFetchThreshold(Math.min(POSTER_BATCH_SIZE, activeResults.length));
+  }, [btnResults, hdbitsResults, searchMode]);
 
   useEffect(() => {
-    if (searchMode !== 'hdbits') return;
+    if (!isTvMode(searchMode)) return;
     if (posterFetchThreshold <= 0) return;
-    const eligibleResults = hdbitsResults.slice(0, posterFetchThreshold);
-    const candidateIds = eligibleResults
-      .map((torrent) => formatImdbId(torrent.imdb?.id))
-      .filter((id): id is string => Boolean(id));
-    if (candidateIds.length === 0) return;
-    const uniqueIds = Array.from(new Set(candidateIds));
+    const baseResults = searchMode === 'hdbits' ? hdbitsResults : btnResults;
+    if (baseResults.length === 0) return;
+    const eligibleResults = baseResults.slice(0, posterFetchThreshold);
+    const candidateIds =
+      searchMode === 'hdbits'
+        ? eligibleResults.map((torrent) => formatImdbId(torrent.imdb?.id))
+        : eligibleResults.map((torrent) => formatImdbId(torrent.ImdbID));
+    const filteredIds = candidateIds.filter((id): id is string => Boolean(id));
+    if (filteredIds.length === 0) return;
+    const uniqueIds = Array.from(new Set(filteredIds));
     const toFetch = uniqueIds.filter((id) => {
       if (pendingPosterIds.current.has(id)) return false;
-      const entry = hdbitsPosters[id];
+      const entry = posterCache[id];
       if (entry?.status === 'success') return false;
       if (entry?.status === 'error') return false;
       return true;
@@ -442,7 +671,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             const details = await getImdbDetails(imdbId);
             if (cancelled) return;
             const poster = extractPosterFromImdb(details) || null;
-            setHdbitsPosters((prev) => {
+            setPosterCache((prev) => {
               if (prev[imdbId]?.status === 'success') return prev;
               return {
                 ...prev,
@@ -452,7 +681,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           } catch (error) {
             console.warn('Failed to load IMDb details for torrent', imdbId, error);
             if (cancelled) return;
-            setHdbitsPosters((prev) => {
+            setPosterCache((prev) => {
               if (prev[imdbId]?.status === 'error') return prev;
               return {
                 ...prev,
@@ -472,12 +701,13 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
       cancelled = true;
       batch.forEach((id) => pendingPosterIds.current.delete(id));
     };
-  }, [hdbitsResults, hdbitsPosters, posterFetchThreshold, searchMode]);
+  }, [btnResults, hdbitsResults, posterCache, posterFetchThreshold, searchMode]);
 
   useEffect(() => {
     if (!queryParam.trim()) {
       setMovies([]);
       setHdbitsResults([]);
+      setBtnResults([]);
       setHasSearched(false);
       setLoading(false);
       return;
@@ -490,8 +720,10 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
       setError('');
       if (searchMode === 'ptp') {
         setMovies([]);
-      } else {
+      } else if (searchMode === 'hdbits') {
         setHdbitsResults([]);
+      } else {
+        setBtnResults([]);
       }
       try {
         if (searchMode === 'ptp') {
@@ -502,11 +734,19 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             setMovies(nextMovies);
             setHasSearched(true);
           }
-        } else {
+        } else if (searchMode === 'hdbits') {
           const response = await searchTvShows(queryParam.trim(), isEmbeddedApp);
           if (!cancelled) {
             const nextShows = Array.isArray(response?.data) ? response.data : [];
             setHdbitsResults(nextShows);
+            setHasSearched(true);
+          }
+        } else {
+          const response = await searchBtnTorrents(queryParam.trim());
+          if (!cancelled) {
+            const torrentMap = response?.result?.torrents;
+            const nextShows = torrentMap ? Object.values(torrentMap) : [];
+            setBtnResults(nextShows);
             setHasSearched(true);
           }
         }
@@ -527,12 +767,14 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   }, [queryParam, searchMode, setError, isEmbeddedApp]);
 
   const requestMorePosters = useCallback(() => {
+    if (!isTvMode(searchMode)) return;
     setPosterFetchThreshold((prev) => {
-      if (hdbitsResults.length === 0) return prev;
-      if (prev >= hdbitsResults.length) return prev;
-      return Math.min(prev + POSTER_BATCH_SIZE, hdbitsResults.length);
+      const activeResults = searchMode === 'hdbits' ? hdbitsResults : btnResults;
+      if (activeResults.length === 0) return prev;
+      if (prev >= activeResults.length) return prev;
+      return Math.min(prev + POSTER_BATCH_SIZE, activeResults.length);
     });
-  }, [hdbitsResults.length]);
+  }, [btnResults, hdbitsResults, searchMode]);
 
   const canSearch = inputValue.trim().length > 0;
   const showTopTorrents =
@@ -581,41 +823,67 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   };
 
   const handleTorrentClick = (torrent: HdbitsTorrentItem) => {
-    if (downloadingId) return;
-    setPendingTorrent(torrent);
+    if (downloadingKey) return;
+    setPendingTorrent({ source: 'hdbits', torrent });
+    setConfirmOpen(true);
+  };
+
+  const handleBtnTorrentClick = (torrent: BtnTorrentItem) => {
+    if (downloadingKey) return;
+    setPendingTorrent({ source: 'btn', torrent });
     setConfirmOpen(true);
   };
 
   const closeDialog = () => {
-    if (downloadingId) return;
+    if (downloadingKey) return;
     setConfirmOpen(false);
     setPendingTorrent(null);
   };
 
   const startTorrentDownload = async () => {
-    if (!pendingTorrent || downloadingId) return;
+    if (!pendingTorrent || downloadingKey) return;
     setError('');
-    setDownloadingId(pendingTorrent.id);
+    let downloadTitle = '';
     try {
-      await downloadTvShow({ torrentId: pendingTorrent.id, title: pendingTorrent.name }, isEmbeddedApp);
+      if (pendingTorrent.source === 'hdbits') {
+        const { torrent } = pendingTorrent;
+        setDownloadingKey(torrent.id);
+        downloadTitle = torrent.name;
+        await downloadTvShow({ torrentId: torrent.id, title: torrent.name }, isEmbeddedApp);
+      } else {
+        const { torrent } = pendingTorrent;
+        if (!torrent.DownloadURL || !torrent.ReleaseName) {
+          throw new Error('Missing BTN download details');
+        }
+        setDownloadingKey(getBtnTorrentKey(torrent));
+        downloadTitle = torrent.ReleaseName;
+        await downloadBtnTorrent({ downloadUrl: torrent.DownloadURL, title: torrent.ReleaseName });
+      }
       setConfirmOpen(false);
       const params = new URLSearchParams();
-      params.set('title', pendingTorrent.name);
+      const pendingTitle = downloadTitle || getPendingTorrentTitle(pendingTorrent);
+      if (pendingTitle) {
+        params.set('title', pendingTitle);
+      }
       navigate(`/download?${params.toString()}`);
     } catch (error: unknown) {
       console.error(error);
       setError(toErrorMessage(error));
     } finally {
       setPendingTorrent(null);
-      setDownloadingId(null);
+      setDownloadingKey(null);
     }
   };
 
   const widgetPayload = useMemo(() => {
     const route = `${location.pathname}${location.search}`;
     const activeQuery = queryParam.trim() || inputValue.trim();
-    const isHdbitsMode = searchMode === 'hdbits';
-    const activeResults = isHdbitsMode ? hdbitsResults : movies;
+    const activeResults =
+      searchMode === 'hdbits'
+        ? hdbitsResults
+        : searchMode === 'btn'
+          ? btnResults
+          : movies;
     const sourceName = SOURCE_LABELS[searchMode];
     const nounSingular = 'Torrent';
     const nounPlural = 'Torrents';
@@ -666,6 +934,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     movies,
     topMovies,
     hdbitsResults,
+    btnResults,
     searchMode,
   ]);
 
@@ -743,15 +1012,15 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
               posterFetchThreshold < hdbitsResults.length &&
               index === posterFetchThreshold;
             const imdbKey = formatImdbId(torrent.imdb?.id);
-            const posterEntry = imdbKey ? hdbitsPosters[imdbKey] : undefined;
+            const posterEntry = imdbKey ? posterCache[imdbKey] : undefined;
             const posterUrl = posterEntry?.posterUrl ?? null;
             return (
               <Fragment key={`${torrent.id}-${index}`}>
                 {showTrigger && <PosterBatchObserver onLoadNext={requestMorePosters} />}
                 <TvResultRow
                   torrent={torrent}
-                  disabled={Boolean(downloadingId)}
-                  downloading={downloadingId === torrent.id}
+                  disabled={Boolean(downloadingKey)}
+                  downloading={downloadingKey === torrent.id}
                   onSelect={() => handleTorrentClick(torrent)}
                   posterUrl={posterUrl}
                 />
@@ -762,6 +1031,37 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
       )}
 
       {!loading && searchMode === 'hdbits' && hasSearched && hdbitsResults.length === 0 && (
+        <p className="text-sm text-muted-foreground">{`No ${sourceLabel} Torrents found. Try a different search.`}</p>
+      )}
+
+      {!loading && searchMode === 'btn' && btnResults.length > 0 && (
+        <div className="space-y-3">
+          {btnResults.map((torrent, index) => {
+            const showTrigger =
+              posterFetchThreshold >= POSTER_BATCH_SIZE &&
+              posterFetchThreshold < btnResults.length &&
+              index === posterFetchThreshold;
+            const imdbKey = formatImdbId(torrent.ImdbID);
+            const posterEntry = imdbKey ? posterCache[imdbKey] : undefined;
+            const posterUrl = posterEntry?.posterUrl ?? null;
+            const rowKey = getBtnTorrentKey(torrent);
+            return (
+              <Fragment key={`${rowKey}-${index}`}>
+                {showTrigger && <PosterBatchObserver onLoadNext={requestMorePosters} />}
+                <BtnResultRow
+                  torrent={torrent}
+                  disabled={Boolean(downloadingKey)}
+                  downloading={downloadingKey === rowKey}
+                  onSelect={() => handleBtnTorrentClick(torrent)}
+                  posterUrl={posterUrl}
+                />
+              </Fragment>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && searchMode === 'btn' && hasSearched && btnResults.length === 0 && (
         <p className="text-sm text-muted-foreground">{`No ${sourceLabel} Torrents found. Try a different search.`}</p>
       )}
 
@@ -798,40 +1098,31 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             <DialogTitle>Start download?</DialogTitle>
             <DialogDescription>
               {pendingTorrent
-                ? `We'll send "${pendingTorrent.name}" to your downloader right away.`
+                ? `We'll send "${getPendingTorrentTitle(pendingTorrent)}" to your downloader right away.`
                 : 'Confirm this torrent request.'}
             </DialogDescription>
           </DialogHeader>
 
           {pendingTorrent && (
             <div className="space-y-3">
-              <div>
-                <div className="text-sm font-semibold text-foreground">{pendingTorrent.name}</div>
-                {pendingTorrent.imdb && (
-                  <div className="text-xs text-muted-foreground">
-                    IMDB: {typeof pendingTorrent.imdb.rating === 'number' ? pendingTorrent.imdb.rating.toFixed(1) : 'N/A'}
-                    {pendingTorrent.imdb.year ? ` (${pendingTorrent.imdb.year})` : ''}
-                  </div>
-                )}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TvStat label="Size" value={formatSize(pendingTorrent.size)} />
-                <TvStat label="Seeders" value={pendingTorrent.seeders} accent />
-                <TvStat
-                  label="Snatched"
-                  value={`${pendingTorrent.times_completed} time${pendingTorrent.times_completed === 1 ? '' : 's'}`}
-                />
-                <TvStat label="Added" value={formatAddedDate(pendingTorrent.added)} />
-              </div>
+              {pendingTorrent.source === 'hdbits' ? (
+                <PendingHdbitsDetails torrent={pendingTorrent.torrent} />
+              ) : (
+                <PendingBtnDetails torrent={pendingTorrent.torrent} />
+              )}
             </div>
           )}
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeDialog} disabled={Boolean(downloadingId)}>
+            <Button variant="outline" onClick={closeDialog} disabled={Boolean(downloadingKey)}>
               Cancel
             </Button>
-            <Button onClick={startTorrentDownload} disabled={!pendingTorrent || Boolean(downloadingId)}>
-              {pendingTorrent && downloadingId === pendingTorrent.id ? <Spinner /> : 'Start download'}
+            <Button onClick={startTorrentDownload} disabled={!pendingTorrent || Boolean(downloadingKey)}>
+              {pendingTorrent && downloadingKey === getPendingTorrentKey(pendingTorrent) ? (
+                <Spinner />
+              ) : (
+                'Start download'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
