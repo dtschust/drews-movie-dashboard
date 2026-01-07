@@ -140,7 +140,7 @@ const getPendingTorrentKey = (pending: PendingTorrent): string | number =>
 const getPendingTorrentTitle = (pending: PendingTorrent): string =>
   pending.source === 'hdbits'
     ? pending.torrent.name
-    : pending.torrent.ReleaseName ?? pending.torrent.GroupName ?? '';
+    : (pending.torrent.ReleaseName ?? pending.torrent.GroupName ?? '');
 
 const IP_APPROVALS_URL =
   'https://broadcasthe.net/user.php?action=edit&userid=1527214#section5.editprofile';
@@ -167,7 +167,9 @@ const getImageUrl = (source: unknown): string => {
       record.path,
       record.poster,
     ];
-    const found = candidates.find((candidate): candidate is string => typeof candidate === 'string');
+    const found = candidates.find(
+      (candidate): candidate is string => typeof candidate === 'string',
+    );
     if (found) {
       return found.trim();
     }
@@ -320,11 +322,7 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
       <div className="flex flex-col gap-4 sm:flex-row">
         {posterUrl && (
           <div className="w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
-            <img
-              src={posterUrl}
-              alt={`${torrent.name} poster`}
-              loading="lazy"
-            />
+            <img src={posterUrl} alt={`${torrent.name} poster`} loading="lazy" />
           </div>
         )}
         <div className="flex-1">
@@ -334,7 +332,12 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
               <span className="text-xs font-normal text-muted-foreground">{seasonEpisode}</span>
             )}
             {torrent.torrent_status && (
-              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase', statusClass)}>
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
+                  statusClass,
+                )}
+              >
                 {torrent.torrent_status}
               </span>
             )}
@@ -348,12 +351,7 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
           {torrent.imdb && (
             <div className="mt-1 text-xs text-muted-foreground">
               IMDB: {imdbRating ?? 'N/A'}
-              {torrent.imdb.englishtitle && (
-                <>
-                  {' '}
-                  · {torrent.imdb.englishtitle}
-                </>
-              )}
+              {torrent.imdb.englishtitle && <> · {torrent.imdb.englishtitle}</>}
               {torrent.imdb.year ? ` (${torrent.imdb.year})` : ''}
               {imdbGenres.length > 0 && ` · ${imdbGenres.join(', ')}`}
             </div>
@@ -492,7 +490,10 @@ function BtnResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: B
             <TvStat label="Seeders" value={seeders} accent />
             <TvStat label="Leechers" value={leechers} />
             <TvStat label="TVDB" value={torrent.TvdbID ?? 'Unknown'} />
-            <TvStat label="IMDB" value={torrent.ImdbID ? formatImdbId(torrent.ImdbID) : 'Unknown'} />
+            <TvStat
+              label="IMDB"
+              value={torrent.ImdbID ? formatImdbId(torrent.ImdbID) : 'Unknown'}
+            />
             <TvStat
               label="Added"
               value={addedIso ? formatAddedDate(addedIso) : formatAddedDate('')}
@@ -523,8 +524,7 @@ function PendingHdbitsDetails({ torrent }: { torrent: HdbitsTorrentItem }) {
         <div className="text-sm font-semibold text-foreground">{torrent.name}</div>
         {torrent.imdb && (
           <div className="text-xs text-muted-foreground">
-            IMDB:{' '}
-            {typeof torrent.imdb.rating === 'number' ? torrent.imdb.rating.toFixed(1) : 'N/A'}
+            IMDB: {typeof torrent.imdb.rating === 'number' ? torrent.imdb.rating.toFixed(1) : 'N/A'}
             {torrent.imdb.year ? ` (${torrent.imdb.year})` : ''}
           </div>
         )}
@@ -557,14 +557,8 @@ function PendingBtnDetails({ torrent }: { torrent: BtnTorrentItem }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <TvStat label="Size" value={formatSize(Number(torrent.Size))} />
         <TvStat label="Seeders" value={formatBtnStatValue(torrent.Seeders)} accent />
-        <TvStat
-          label="Snatched"
-          value={`${snatchedCount} time${snatchedCount === 1 ? '' : 's'}`}
-        />
-        <TvStat
-          label="Added"
-          value={addedIso ? formatAddedDate(addedIso) : formatAddedDate('')}
-        />
+        <TvStat label="Snatched" value={`${snatchedCount} time${snatchedCount === 1 ? '' : 's'}`} />
+        <TvStat label="Added" value={addedIso ? formatAddedDate(addedIso) : formatAddedDate('')} />
       </div>
     </>
   );
@@ -581,15 +575,18 @@ function PosterBatchObserver({ onLoadNext }: PosterBatchObserverProps) {
   useEffect(() => {
     const element = ref.current;
     if (!element || triggeredRef.current) return;
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting && !triggeredRef.current) {
-          triggeredRef.current = true;
-          obs.disconnect();
-          onLoadNext();
-        }
-      });
-    }, { rootMargin: '200px 0px' });
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !triggeredRef.current) {
+            triggeredRef.current = true;
+            obs.disconnect();
+            onLoadNext();
+          }
+        });
+      },
+      { rootMargin: '200px 0px' },
+    );
     observer.observe(element);
     return () => {
       observer.disconnect();
@@ -777,7 +774,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
           }
           if (!cancelled) {
             const torrentMap = response?.result?.torrents;
-            const nextShows = torrentMap ? Object.values(torrentMap) : [];
+            const nextShows = torrentMap ? Object.values(torrentMap).reverse() : [];
             setBtnResults(nextShows);
             setHasSearched(true);
           }
@@ -809,8 +806,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   }, [btnResults, hdbitsResults, searchMode]);
 
   const canSearch = inputValue.trim().length > 0;
-  const showTopTorrents =
-    !loading && !hasSearched && topMovies?.length > 0 && searchMode === 'ptp';
+  const showTopTorrents = !loading && !hasSearched && topMovies?.length > 0 && searchMode === 'ptp';
 
   const updateSearchParams = (nextQuery: string, mode: SearchMode, replace = false) => {
     const params = new URLSearchParams();
@@ -915,11 +911,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
     const route = `${location.pathname}${location.search}`;
     const activeQuery = queryParam.trim() || inputValue.trim();
     const activeResults =
-      searchMode === 'hdbits'
-        ? hdbitsResults
-        : searchMode === 'btn'
-          ? btnResults
-          : movies;
+      searchMode === 'hdbits' ? hdbitsResults : searchMode === 'btn' ? btnResults : movies;
     const sourceName = SOURCE_LABELS[searchMode];
     const nounSingular = 'Torrent';
     const nounPlural = 'Torrents';
@@ -1153,7 +1145,10 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             <Button variant="outline" onClick={closeDialog} disabled={Boolean(downloadingKey)}>
               Cancel
             </Button>
-            <Button onClick={startTorrentDownload} disabled={!pendingTorrent || Boolean(downloadingKey)}>
+            <Button
+              onClick={startTorrentDownload}
+              disabled={!pendingTorrent || Boolean(downloadingKey)}
+            >
               {pendingTorrent && downloadingKey === getPendingTorrentKey(pendingTorrent) ? (
                 <Spinner />
               ) : (
