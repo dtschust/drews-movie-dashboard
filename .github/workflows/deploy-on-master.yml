@@ -35,10 +35,10 @@ jobs:
       - name: predeploy
         run: npm run predeploy
 
-      # Upload the static site output (dist) as a Pages artifact
+      # Upload the static site output (dist/web) as a Pages artifact
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist/web
 
   deploy:
     needs: build
