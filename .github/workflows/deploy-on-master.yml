@@ -32,6 +32,11 @@ jobs:
       - name: Work around npm optional dependency bug for Rollup
         run: npm install --no-save --no-package-lock @rollup/rollup-linux-x64-gnu
 
+      - name: Configure git author for gh-pages commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Build and publish dist/web to gh-pages
         run: npm run deploy
         env:
