@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/Spinner';
 import {
@@ -971,11 +971,6 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   return (
     <>
       <Card className={cn('mb-6', isEmbeddedApp && 'p-3 mb-1')}>
-        {!isEmbeddedApp && (
-          <CardHeader>
-            <CardTitle>Search the library</CardTitle>
-          </CardHeader>
-        )}
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-2">
             {SOURCE_OPTIONS.map((source) => (
