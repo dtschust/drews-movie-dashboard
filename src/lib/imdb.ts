@@ -14,7 +14,5 @@ export function formatImdbId(value: unknown): string | null {
 
   if (!digits) return null;
   const normalizedDigits = digits.padStart(7, '0');
-  const finalDigits =
-    normalizedDigits.length > 7 ? normalizedDigits.slice(normalizedDigits.length - 7) : normalizedDigits;
-  return `tt${finalDigits}`;
+  return `tt${normalizedDigits}`;
 }
