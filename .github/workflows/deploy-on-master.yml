@@ -1,15 +1,15 @@
-name: Deploy on master merge
+name: Deploy on main merge
 
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   contents: write
 
 concurrency:
-  group: deploy-master
+  group: deploy-main
   cancel-in-progress: true
 
 jobs:
