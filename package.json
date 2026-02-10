@@ -14,8 +14,7 @@
     "lint:fix": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "predeploy": "npm run build && cp dist/embedded/index.html dist/web/indexEmbedded.html",
-    "deploy": "gh-pages -d dist/web -b gh-pages"
+    "predeploy": "npm run build && cp dist/embedded/index.html dist/web/indexEmbedded.html"
   },
   "keywords": [],
   "author": "",

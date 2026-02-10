@@ -45,33 +45,28 @@ On first load, you’ll be prompted for a token. It is saved to `localStorage.to
 
 ## Deployment (GitHub Pages)
 
+This repo deploys with GitHub Actions on every push to `main` using `.github/workflows/deploy-on-master.yml`.
+
 This repo is configured for Pages under the path `/drews-movie-dashboard/`.
 
 - If your repo name or Pages path differs, change `base` in `vite.config.ts`.
 
-### Deploy using gh-pages branch (recommended)
+Workflow summary:
 
-We include a `gh-pages` deploy script that builds and publishes `dist/` to the `gh-pages` branch.
+- Installs dependencies with `npm ci --include=optional`
+- Applies a Rollup Linux optional dependency workaround in CI
+- Runs `npm run predeploy` (builds both targets and copies embedded output to `dist/web/indexEmbedded.html`)
+- Uploads `dist/web` as a Pages artifact
+- Publishes via `actions/deploy-pages@v4`
 
-Prerequisites:
+Repository settings required:
 
-- A remote `origin` pointing to the GitHub repo with write access.
-- Ensure `base` in `vite.config.js` matches the repo name path.
+- GitHub → Settings → Pages → Source: `GitHub Actions`
 
-Steps:
+Local verification before pushing:
 
-- `npm run deploy`
-
-What it does:
-
-- Runs `npm run build`
-- Publishes `dist/` to the `gh-pages` branch via `gh-pages` package
-- In GitHub → Settings → Pages, choose Source: `Deploy from a branch`, Branch: `gh-pages` → `/ (root)`
-
-### Alternative: docs folder (main branch)
-
-- Either move `dist/` contents to a `docs/` folder, or configure Vite to build to `docs/`.
-- In GitHub → Settings → Pages, choose Source: `Deploy from a branch`, Branch: `main` → `/docs`.
+- `npm run predeploy`
+- Confirm `dist/web/index.html` and `dist/web/indexEmbedded.html` exist
 
 ## Error Handling
 
