@@ -12,6 +12,7 @@ export function rememberMovies(movies: MovieSummary[] | null | undefined): void 
       posterUrl: movie.posterUrl ?? existing.posterUrl,
       title: movie.title ?? existing.title,
       year: movie.year ?? existing.year,
+      runtime: movie.runtime ?? existing.runtime,
       imdbId: movie.imdbId ?? existing.imdbId,
       synopsis: existing.synopsis,
       credits: existing.credits,

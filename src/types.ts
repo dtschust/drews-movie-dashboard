@@ -17,6 +17,7 @@ export interface MovieSummary {
   id: string | number;
   title?: string;
   year?: string | number;
+  runtime?: string;
   posterUrl?: string;
   imdbId?: string;
   synopsis?: string;
@@ -28,6 +29,7 @@ export interface MovieCacheEntry {
   posterUrl?: string;
   title?: string;
   year?: string | number;
+  runtime?: string;
   imdbId?: string;
   synopsis?: string;
   credits?: MovieCredits;
