@@ -92,6 +92,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
   const [synopsis, setSynopsis] = useState<string>('');
   const [credits, setCredits] = useState<MovieCredits>(() => createEmptyCredits());
   const [imdbLoading, setImdbLoading] = useState<boolean>(false);
+  const [runtime, setRuntime] = useState<string>('');
   const [creditsOpen, setCreditsOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,11 +112,13 @@ export function VersionsPage({ setError }: VersionsPageProps) {
     if (cachedMovie) {
       setSynopsis(cachedMovie.synopsis || '');
       setCredits(cachedMovie.credits ?? createEmptyCredits());
+      setRuntime(cachedMovie.runtime ?? '');
       setImdbLoading(false);
       return;
     }
     setSynopsis('');
     setCredits(createEmptyCredits());
+    setRuntime('');
     setImdbLoading(false);
   }, [cachedMovie, movieId]);
 
@@ -154,6 +157,42 @@ export function VersionsPage({ setError }: VersionsPageProps) {
           .map((candidate) => candidate.trim())
           .find(Boolean);
         return found || '';
+      }
+      return '';
+    };
+
+    const toRuntimeString = (value: unknown): string => {
+      if (value == null) return '';
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        const minutes = Math.max(0, Math.round(value));
+        if (!minutes) return '';
+        const hours = Math.floor(minutes / 60);
+        const remainder = minutes % 60;
+        if (!hours) return `${remainder}m`;
+        if (!remainder) return `${hours}h`;
+        return `${hours}h ${remainder}m`;
+      }
+      if (typeof value === 'string') {
+        return value.trim();
+      }
+      if (typeof value === 'object' && value !== null) {
+        const record = value as Record<string, unknown>;
+        const candidates = [
+          record.displayableProperty,
+          record.displayProperty,
+          record.plainText,
+          record.text,
+          record.value,
+          record.label,
+          record.formatted,
+          record.runtime,
+          record.seconds,
+          record.minutes,
+        ];
+        for (const candidate of candidates) {
+          const result = toRuntimeString(candidate);
+          if (result) return result;
+        }
       }
       return '';
     };
@@ -287,6 +326,20 @@ export function VersionsPage({ setError }: VersionsPageProps) {
             .map((entry) => toSynopsisString(entry))
             .find((entry) => Boolean(entry)) || '';
 
+        const runtimeCandidates = [
+          data?.runtime,
+          data?.runtimeMinutes,
+          data?.runtimeSeconds,
+          data?.runningTimeInMinutes,
+          data?.runningTime,
+          data?.title?.runtime,
+          data?.technicalSpecifications?.runtime,
+        ];
+        const nextRuntime =
+          runtimeCandidates
+            .map((entry) => toRuntimeString(entry))
+            .find((entry) => Boolean(entry)) || '';
+
         const nextCredits: MovieCredits = {
           writers: mergePeople(
             data?.credits?.writers,
@@ -330,11 +383,13 @@ export function VersionsPage({ setError }: VersionsPageProps) {
         }
 
         setCredits(mergedCredits);
+        setRuntime(nextRuntime || cachedMovie.runtime || '');
 
         const existing: MovieCacheEntry = movieCache.get(String(movieId)) ?? {};
         const nextEntry: MovieCacheEntry = {
           ...existing,
           imdbId: existing.imdbId ?? imdbId,
+          runtime: nextRuntime || existing.runtime || cachedMovie.runtime || '',
           synopsis: cleanSynopsis || existing.synopsis || cachedSynopsis || '',
           credits: mergedCredits,
           imdbDetailsFetched: true,
@@ -414,8 +469,8 @@ export function VersionsPage({ setError }: VersionsPageProps) {
 
   const hasCredits = Boolean(
     (credits.directors && credits.directors.length) ||
-      (credits.writers && credits.writers.length) ||
-      (credits.stars && credits.stars.length),
+    (credits.writers && credits.writers.length) ||
+    (credits.stars && credits.stars.length),
   );
 
   const renderPeopleGroup = (label: string, people: MoviePerson[]): ReactNode => {
@@ -491,6 +546,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
         versions,
         versionsCount: versions.length,
         synopsis,
+        runtime,
         imdbLoading,
         credits,
         hasCredits,
@@ -510,6 +566,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
     loading,
     versions,
     synopsis,
+    runtime,
     imdbLoading,
     credits,
     hasCredits,
@@ -523,7 +580,8 @@ export function VersionsPage({ setError }: VersionsPageProps) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-dashed border-border/80 bg-muted/40 p-4">
-        {cachedMovie && (cachedMovie.posterUrl || cachedMovie.title || cachedMovie.year) ? (
+        {cachedMovie &&
+        (cachedMovie.posterUrl || cachedMovie.title || cachedMovie.year || runtime) ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="flex items-center gap-4">
@@ -546,6 +604,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
                   {cachedMovie.year ? (
                     <div className="text-xs text-muted-foreground">{cachedMovie.year}</div>
                   ) : null}
+                  {runtime ? <div className="text-xs text-muted-foreground">{runtime}</div> : null}
                 </div>
               </div>
               {(imdbLoading || synopsis) && (
