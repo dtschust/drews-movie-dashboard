@@ -100,6 +100,7 @@ export interface HdbitsImdbData {
   year: number;
   genres: string[];
   rating: number;
+  runtimeSeconds?: number | string;
 }
 
 export interface HdbitsTvdbData {

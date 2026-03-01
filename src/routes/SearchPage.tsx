@@ -95,6 +95,7 @@ const POSTER_BATCH_SIZE = 5;
 
 interface PosterCacheEntry {
   posterUrl: string | null;
+  runtime: string | null;
   status: 'success' | 'error';
 }
 
@@ -132,6 +133,26 @@ const getBtnTorrentKey = (torrent: BtnTorrentItem): string => {
     torrent.ReleaseName ??
     `${torrent.GroupID ?? ''}-${torrent.GroupName ?? ''}`
   );
+};
+
+const formatRuntimeFromSeconds = (value: unknown): string => {
+  const parsedSeconds =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim().length > 0
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(parsedSeconds)) return '';
+
+  const totalSeconds = Math.max(0, Math.round(parsedSeconds));
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  if (minutes > 0) return `${minutes}m`;
+  return '0m';
 };
 
 const getPendingTorrentKey = (pending: PendingTorrent): string | number =>
@@ -203,6 +224,17 @@ const extractPosterFromImdb = (details: unknown): string => {
   }
   if (typeof record.data === 'object' && record.data !== null) {
     return extractPosterFromImdb(record.data);
+  }
+  return '';
+};
+
+const extractRuntimeFromImdb = (details: unknown): string => {
+  if (!details || typeof details !== 'object') return '';
+  const record = details as Record<string, unknown>;
+  const directRuntime = formatRuntimeFromSeconds(record.runtimeSeconds);
+  if (directRuntime) return directRuntime;
+  if (typeof record.data === 'object' && record.data !== null) {
+    return extractRuntimeFromImdb(record.data);
   }
   return '';
 };
@@ -288,12 +320,21 @@ interface TvResultRowProps {
   downloading: boolean;
   onSelect: () => void;
   posterUrl?: string | null;
+  runtime?: string | null;
 }
 
-function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: TvResultRowProps) {
+function TvResultRow({
+  torrent,
+  disabled,
+  downloading,
+  onSelect,
+  posterUrl,
+  runtime,
+}: TvResultRowProps) {
   const imdbRating =
     typeof torrent.imdb?.rating === 'number' ? torrent.imdb.rating.toFixed(1) : null;
   const imdbGenres = Array.isArray(torrent.imdb?.genres) ? torrent.imdb?.genres : [];
+  const runtimeLabel = runtime || formatRuntimeFromSeconds(torrent.imdb?.runtimeSeconds);
   const seasonEpisode =
     torrent.tvdb && (torrent.tvdb.season || torrent.tvdb.episode)
       ? `S${String(torrent.tvdb.season || 0).padStart(2, '0')}E${String(torrent.tvdb.episode || 0).padStart(2, '0')}`
@@ -353,6 +394,7 @@ function TvResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: Tv
               IMDB: {imdbRating ?? 'N/A'}
               {torrent.imdb.englishtitle && <> · {torrent.imdb.englishtitle}</>}
               {torrent.imdb.year ? ` (${torrent.imdb.year})` : ''}
+              {runtimeLabel && ` · ${runtimeLabel}`}
               {imdbGenres.length > 0 && ` · ${imdbGenres.join(', ')}`}
             </div>
           )}
@@ -407,9 +449,17 @@ interface BtnResultRowProps {
   downloading: boolean;
   onSelect: () => void;
   posterUrl?: string | null;
+  runtime?: string | null;
 }
 
-function BtnResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: BtnResultRowProps) {
+function BtnResultRow({
+  torrent,
+  disabled,
+  downloading,
+  onSelect,
+  posterUrl,
+  runtime,
+}: BtnResultRowProps) {
   const releaseName = torrent.ReleaseName ?? torrent.GroupName ?? 'Unknown release';
   const secondaryLine = [torrent.Series, torrent.GroupName].filter(Boolean).join(' · ');
   const qualityDetails = [torrent.Resolution, torrent.Source, torrent.Codec, torrent.Container]
@@ -425,6 +475,7 @@ function BtnResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: B
   const artworkUrl = posterUrl ?? normalizePosterUrl(torrent.SeriesPoster);
   const tags = Array.isArray(torrent.Tags) ? torrent.Tags : [];
   const genres = Array.isArray(torrent.Genres) ? torrent.Genres : [];
+  const runtimeLabel = runtime || '';
 
   return (
     <button
@@ -462,6 +513,8 @@ function BtnResultRow({ torrent, disabled, downloading, onSelect, posterUrl }: B
           {secondaryLine && (
             <div className="mt-1 text-xs text-muted-foreground">{secondaryLine}</div>
           )}
+
+          {runtimeLabel && <div className="mt-1 text-xs text-muted-foreground">{runtimeLabel}</div>}
 
           {qualityDetails && (
             <div className="mt-2 text-xs text-muted-foreground">{qualityDetails}</div>
@@ -679,11 +732,12 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             const details = await getImdbDetails(imdbId);
             if (cancelled) return;
             const poster = extractPosterFromImdb(details) || null;
+            const runtime = extractRuntimeFromImdb(details) || null;
             setPosterCache((prev) => {
               if (prev[imdbId]?.status === 'success') return prev;
               return {
                 ...prev,
-                [imdbId]: { posterUrl: poster, status: 'success' },
+                [imdbId]: { posterUrl: poster, runtime, status: 'success' },
               };
             });
           } catch (error) {
@@ -693,7 +747,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
               if (prev[imdbId]?.status === 'error') return prev;
               return {
                 ...prev,
-                [imdbId]: { posterUrl: null, status: 'error' },
+                [imdbId]: { posterUrl: null, runtime: null, status: 'error' },
               };
             });
           } finally {
@@ -1037,6 +1091,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             const imdbKey = formatImdbId(torrent.imdb?.id);
             const posterEntry = imdbKey ? posterCache[imdbKey] : undefined;
             const posterUrl = posterEntry?.posterUrl ?? null;
+            const runtime = posterEntry?.runtime ?? null;
             return (
               <Fragment key={`${torrent.id}-${index}`}>
                 {showTrigger && <PosterBatchObserver onLoadNext={requestMorePosters} />}
@@ -1046,6 +1101,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
                   downloading={downloadingKey === torrent.id}
                   onSelect={() => handleTorrentClick(torrent)}
                   posterUrl={posterUrl}
+                  runtime={runtime}
                 />
               </Fragment>
             );
@@ -1067,6 +1123,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
             const imdbKey = formatImdbId(torrent.ImdbID);
             const posterEntry = imdbKey ? posterCache[imdbKey] : undefined;
             const posterUrl = posterEntry?.posterUrl ?? null;
+            const runtime = posterEntry?.runtime ?? null;
             const rowKey = getBtnTorrentKey(torrent);
             return (
               <Fragment key={`${rowKey}-${index}`}>
@@ -1077,6 +1134,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
                   downloading={downloadingKey === rowKey}
                   onSelect={() => handleBtnTorrentClick(torrent)}
                   posterUrl={posterUrl}
+                  runtime={runtime}
                 />
               </Fragment>
             );
