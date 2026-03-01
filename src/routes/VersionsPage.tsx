@@ -164,35 +164,18 @@ export function VersionsPage({ setError }: VersionsPageProps) {
     const toRuntimeString = (value: unknown): string => {
       if (value == null) return '';
       if (typeof value === 'number' && Number.isFinite(value)) {
-        const minutes = Math.max(0, Math.round(value));
-        if (!minutes) return '';
-        const hours = Math.floor(minutes / 60);
-        const remainder = minutes % 60;
-        if (!hours) return `${remainder}m`;
-        if (!remainder) return `${hours}h`;
-        return `${hours}h ${remainder}m`;
+        const totalSeconds = Math.max(0, Math.round(value));
+        const totalMinutes = Math.floor(totalSeconds / 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+        if (hours > 0) return `${hours}h`;
+        if (minutes > 0) return `${minutes}m`;
+        return '0m';
       }
       if (typeof value === 'string') {
         return value.trim();
-      }
-      if (typeof value === 'object' && value !== null) {
-        const record = value as Record<string, unknown>;
-        const candidates = [
-          record.displayableProperty,
-          record.displayProperty,
-          record.plainText,
-          record.text,
-          record.value,
-          record.label,
-          record.formatted,
-          record.runtime,
-          record.seconds,
-          record.minutes,
-        ];
-        for (const candidate of candidates) {
-          const result = toRuntimeString(candidate);
-          if (result) return result;
-        }
       }
       return '';
     };
@@ -326,15 +309,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
             .map((entry) => toSynopsisString(entry))
             .find((entry) => Boolean(entry)) || '';
 
-        const runtimeCandidates = [
-          data?.runtime,
-          data?.runtimeMinutes,
-          data?.runtimeSeconds,
-          data?.runningTimeInMinutes,
-          data?.runningTime,
-          data?.title?.runtime,
-          data?.technicalSpecifications?.runtime,
-        ];
+        const runtimeCandidates = [data?.runtimeSeconds];
         const nextRuntime =
           runtimeCandidates
             .map((entry) => toRuntimeString(entry))
@@ -469,8 +444,8 @@ export function VersionsPage({ setError }: VersionsPageProps) {
 
   const hasCredits = Boolean(
     (credits.directors && credits.directors.length) ||
-    (credits.writers && credits.writers.length) ||
-    (credits.stars && credits.stars.length),
+      (credits.writers && credits.writers.length) ||
+      (credits.stars && credits.stars.length),
   );
 
   const renderPeopleGroup = (label: string, people: MoviePerson[]): ReactNode => {
