@@ -63,6 +63,18 @@ export interface MovieSearchResponse {
 
 export interface TopMoviesResponse extends MovieSearchResponse {}
 
+export interface NotificationItem {
+  id?: string | number;
+  title?: string;
+  message?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export interface NotificationsResponse {
+  notifications?: NotificationItem[];
+}
+
 export interface VersionsResponse {
   versions?: MovieVersion[];
 }

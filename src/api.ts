@@ -7,6 +7,7 @@ import type {
   ImdbDetails,
   MovieSearchResponse,
   TopMoviesResponse,
+  NotificationsResponse,
   TvDownloadRequest,
   VersionsResponse,
 } from './types';
@@ -62,6 +63,30 @@ export async function getTopMovies(isEmbeddedApp: boolean = false): Promise<TopM
   }
 }
 
+export async function getNotifications(
+  isEmbeddedApp: boolean = false,
+): Promise<NotificationsResponse> {
+  if (isEmbeddedApp) {
+    try {
+      const toolResponse = await window.openai.callTool('get-notifications', {});
+      if (toolResponse?.structuredContent) {
+        return toolResponse.structuredContent as NotificationsResponse;
+      }
+    } catch (toolError) {
+      console.warn('get-notifications tool failed, falling back to HTTP request', toolError);
+    }
+  }
+
+  const token = getToken();
+  const url = new URL(API_BASE + '/notifications');
+  url.searchParams.set('token', token);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Notifications failed (${res.status})`);
+  }
+  return (await res.json()) as NotificationsResponse;
+}
 export async function getVersions(
   id: string | number,
   title = '',
