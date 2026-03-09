@@ -707,9 +707,7 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
         ? hdbitsResults
             .slice(0, posterFetchThreshold)
             .map((torrent) => formatImdbId(torrent.imdb?.id))
-        : btnResults
-            .slice(0, posterFetchThreshold)
-            .map((torrent) => formatImdbId(torrent.ImdbID));
+        : btnResults.slice(0, posterFetchThreshold).map((torrent) => formatImdbId(torrent.ImdbID));
     const filteredIds = candidateIds.filter((id): id is string => Boolean(id));
     if (filteredIds.length === 0) return;
     const uniqueIds = Array.from(new Set(filteredIds));
