@@ -223,7 +223,7 @@ function AppLayout({
         <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
           <DialogHeader className="border-b px-6 py-4">
             <div className="flex items-center justify-between gap-3 pr-8">
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <DialogTitle>Notifications</DialogTitle>
                 <DialogDescription>Recent updates from the movie dashboard.</DialogDescription>
               </div>
@@ -239,18 +239,20 @@ function AppLayout({
               </Button>
             </div>
           </DialogHeader>
-          <div className="max-h-[min(24rem,calc(100vh-12rem))] overflow-y-auto px-6 py-4">
+          <div className="min-w-0 max-h-[min(24rem,calc(100vh-12rem))] overflow-y-auto px-6 py-4">
             {notificationsError ? (
               <p className="text-sm text-destructive">{notificationsError}</p>
             ) : notifications.length === 0 ? (
               <p className="text-sm text-muted-foreground">No notifications.</p>
             ) : (
-              <ul className="space-y-2 text-sm">
+              <ul className="min-w-0 space-y-2 text-sm">
                 {notifications.map((notification, index) => {
                   const key = `${notification.createdAt ?? ''}:${notification.message ?? ''}:${index}`;
                   return (
-                    <li key={key} className="rounded border p-3">
-                      <p>{getNotificationText(notification)}</p>
+                    <li key={key} className="min-w-0 rounded border p-3">
+                      <p className="break-words [overflow-wrap:anywhere]">
+                        {getNotificationText(notification)}
+                      </p>
                       {typeof notification.createdAt === 'string' && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           {notification.createdAt}
