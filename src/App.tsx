@@ -132,6 +132,48 @@ function getNotificationText(notification: NotificationItem): string {
   return 'Notification';
 }
 
+function formatNotificationTimestamp(timestamp?: number | string): string | null {
+  if (timestamp === undefined || timestamp === null) {
+    return null;
+  }
+
+  let parsed: Date;
+  if (typeof timestamp === 'number') {
+    if (!Number.isFinite(timestamp)) {
+      return null;
+    }
+    parsed = new Date(timestamp);
+  } else {
+    const trimmedTimestamp = timestamp.trim();
+    if (!trimmedTimestamp) {
+      return null;
+    }
+
+    const numericTimestamp = Number(trimmedTimestamp);
+    parsed = Number.isFinite(numericTimestamp)
+      ? new Date(numericTimestamp)
+      : new Date(trimmedTimestamp);
+  }
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).formatToParts(parsed);
+
+  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+
+  return `${getPart('month')}/${getPart('day')}/${getPart('year')} ${getPart('hour')}:${getPart('minute')} ${getPart('dayPeriod').toLowerCase()}`;
+}
+
 interface AppLayoutProps {
   onLogout: () => void;
   error: string;
@@ -247,16 +289,15 @@ function AppLayout({
             ) : (
               <ul className="min-w-0 space-y-2 text-sm">
                 {notifications.map((notification, index) => {
-                  const key = `${notification.createdAt ?? ''}:${notification.message ?? ''}:${index}`;
+                  const key = `${notification.timestamp ?? ''}:${notification.message ?? ''}:${index}`;
+                  const formattedTimestamp = formatNotificationTimestamp(notification.timestamp);
                   return (
                     <li key={key} className="min-w-0 rounded border p-3">
                       <p className="break-words [overflow-wrap:anywhere]">
                         {getNotificationText(notification)}
                       </p>
-                      {typeof notification.createdAt === 'string' && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {notification.createdAt}
-                        </p>
+                      {formattedTimestamp && (
+                        <p className="mt-1 text-xs text-muted-foreground">{formattedTimestamp}</p>
                       )}
                     </li>
                   );

@@ -65,7 +65,7 @@ export interface TopMoviesResponse extends MovieSearchResponse {}
 
 export interface NotificationItem {
   message?: string;
-  createdAt?: string;
+  timestamp?: number | string;
 }
 
 export type NotificationsResponse = NotificationItem[];
