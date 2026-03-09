@@ -129,9 +129,6 @@ function getNotificationText(notification: NotificationItem): string {
   if (typeof notification.message === 'string' && notification.message.trim()) {
     return notification.message.trim();
   }
-  if (typeof notification.title === 'string' && notification.title.trim()) {
-    return notification.title.trim();
-  }
   return 'Notification';
 }
 
@@ -234,7 +231,7 @@ function AppLayout({
                     ) : (
                       <ul className="max-h-72 space-y-2 overflow-y-auto pr-1 text-sm">
                         {notifications.map((notification, index) => {
-                          const key = String(notification.id ?? index);
+                          const key = String(notification.message ?? index);
                           return (
                             <li key={key} className="rounded border p-2">
                               <p>{getNotificationText(notification)}</p>
