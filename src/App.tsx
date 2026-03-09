@@ -247,7 +247,7 @@ function AppLayout({
             ) : (
               <ul className="space-y-2 text-sm">
                 {notifications.map((notification, index) => {
-                  const key = String(notification.id ?? notification.message ?? index);
+                  const key = `${notification.createdAt ?? ''}:${notification.message ?? ''}:${index}`;
                   return (
                     <li key={key} className="rounded border p-3">
                       <p>{getNotificationText(notification)}</p>

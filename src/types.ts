@@ -64,7 +64,6 @@ export interface MovieSearchResponse {
 export interface TopMoviesResponse extends MovieSearchResponse {}
 
 export interface NotificationItem {
-  id?: string | number;
   message?: string;
   createdAt?: string;
 }
