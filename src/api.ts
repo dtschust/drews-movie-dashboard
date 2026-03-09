@@ -14,6 +14,7 @@ import type {
 import { formatImdbId } from './lib/imdb';
 
 export const API_BASE = 'https://tools.drew.shoes/movies';
+export const NOTIFICATION_API = 'https://tools.drew.shoes/notifs';
 export const HDBITS_API_BASE = 'https://tools.drew.shoes/hdbits';
 export const BTN_API_BASE = 'https://tools.drew.shoes/btn';
 
@@ -77,9 +78,7 @@ export async function getNotifications(
     }
   }
 
-  const token = getToken();
-  const url = new URL(API_BASE + '/notifications');
-  url.searchParams.set('token', token);
+  const url = new URL(NOTIFICATION_API);
   const res = await fetch(url.toString());
   if (!res.ok) {
     const text = await res.text();

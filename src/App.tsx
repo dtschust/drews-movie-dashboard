@@ -398,28 +398,12 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const normalizeNotifications = (response: NotificationsResponse): NotificationItem[] => {
-    const fromArray = Array.isArray((response as { notifications?: unknown[] }).notifications)
-      ? ((response as { notifications: unknown[] }).notifications as NotificationItem[])
-      : [];
-
-    if (fromArray.length > 0) {
-      return fromArray;
-    }
-
-    const content = response as { data?: unknown[]; items?: unknown[]; results?: unknown[] };
-    if (Array.isArray(content.data)) return content.data as NotificationItem[];
-    if (Array.isArray(content.items)) return content.items as NotificationItem[];
-    if (Array.isArray(content.results)) return content.results as NotificationItem[];
-    return [];
-  };
-
   const loadNotifications = async () => {
     try {
       setNotificationsLoading(true);
       setNotificationsError('');
       const result = await getNotifications(isEmbeddedApp);
-      setNotifications(normalizeNotifications(result));
+      setNotifications(result);
     } catch (fetchError: unknown) {
       console.error(fetchError);
       setNotificationsError(toErrorMessage(fetchError));
