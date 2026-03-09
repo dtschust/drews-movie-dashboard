@@ -4,7 +4,7 @@
   "description": "Static React app for searching and downloading movies via helper API",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run lint && npm run typecheck",
     "dev": "vite",
     "dev:embedded": "vite --mode embedded",
     "build:web": "vite build --mode web",
@@ -22,6 +22,7 @@
   "type": "module",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/node": "^25.3.5",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.0.2",

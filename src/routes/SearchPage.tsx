@@ -702,13 +702,12 @@ export function SearchPage({ topMovies, setError, isEmbeddedApp }: SearchPagePro
   useEffect(() => {
     if (!isTvMode(searchMode)) return;
     if (posterFetchThreshold <= 0) return;
-    const baseResults = searchMode === 'hdbits' ? hdbitsResults : btnResults;
-    if (baseResults.length === 0) return;
-    const eligibleResults = baseResults.slice(0, posterFetchThreshold);
     const candidateIds =
       searchMode === 'hdbits'
-        ? eligibleResults.map((torrent) => formatImdbId(torrent.imdb?.id))
-        : eligibleResults.map((torrent) => formatImdbId(torrent.ImdbID));
+        ? hdbitsResults
+            .slice(0, posterFetchThreshold)
+            .map((torrent) => formatImdbId(torrent.imdb?.id))
+        : btnResults.slice(0, posterFetchThreshold).map((torrent) => formatImdbId(torrent.ImdbID));
     const filteredIds = candidateIds.filter((id): id is string => Boolean(id));
     if (filteredIds.length === 0) return;
     const uniqueIds = Array.from(new Set(filteredIds));

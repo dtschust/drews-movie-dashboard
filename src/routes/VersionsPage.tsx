@@ -130,6 +130,7 @@ export function VersionsPage({ setError }: VersionsPageProps) {
 
     const cachedSynopsis = cachedMovie.synopsis;
     const cachedCredits = cachedMovie.credits ?? createEmptyCredits();
+    const cachedRuntime = cachedMovie.runtime ?? '';
     const hasCachedCredits = Object.values(cachedCredits).some(
       (list) => Array.isArray(list) && list.length > 0,
     );
@@ -358,13 +359,13 @@ export function VersionsPage({ setError }: VersionsPageProps) {
         }
 
         setCredits(mergedCredits);
-        setRuntime(nextRuntime || cachedMovie.runtime || '');
+        setRuntime(nextRuntime || cachedRuntime);
 
         const existing: MovieCacheEntry = movieCache.get(String(movieId)) ?? {};
         const nextEntry: MovieCacheEntry = {
           ...existing,
           imdbId: existing.imdbId ?? imdbId,
-          runtime: nextRuntime || existing.runtime || cachedMovie.runtime || '',
+          runtime: nextRuntime || existing.runtime || cachedRuntime,
           synopsis: cleanSynopsis || existing.synopsis || cachedSynopsis || '',
           credits: mergedCredits,
           imdbDetailsFetched: true,

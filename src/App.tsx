@@ -14,11 +14,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Maximize2, Moon, Sun } from 'lucide-react';
+import { Bell, Maximize2, Moon, RefreshCcw, Sun } from 'lucide-react';
 import { useEmbeddedAppContext } from './context/EmbeddedAppContext';
 import { rememberMovies } from '@/lib/movieCache';
-import { getTopMovies } from './api';
-import type { MovieSummary, Theme } from './types';
+import { getNotifications, getTopMovies } from './api';
+import type { MovieSummary, NotificationItem, NotificationsResponse, Theme } from './types';
 import { SearchPage } from '@/routes/SearchPage';
 import { VersionsPage } from '@/routes/VersionsPage';
 import { DownloadPage } from '@/routes/DownloadPage';
@@ -125,6 +125,13 @@ function TokenGate({ onSaved }: TokenGateProps) {
   );
 }
 
+function getNotificationText(notification: NotificationItem): string {
+  if (typeof notification.message === 'string' && notification.message.trim()) {
+    return notification.message.trim();
+  }
+  return 'Notification';
+}
+
 interface AppLayoutProps {
   onLogout: () => void;
   error: string;
@@ -133,6 +140,10 @@ interface AppLayoutProps {
   onToggleFullscreen: () => void;
   theme: Theme;
   isEmbeddedApp: boolean;
+  notifications: NotificationItem[];
+  notificationsLoading: boolean;
+  notificationsError: string;
+  onReloadNotifications: () => void;
   children: ReactNode;
 }
 
@@ -144,6 +155,10 @@ function AppLayout({
   onToggleFullscreen,
   theme,
   isEmbeddedApp,
+  notifications,
+  notificationsLoading,
+  notificationsError,
+  onReloadNotifications,
   children,
 }: AppLayoutProps) {
   const mode = useOpenAiGlobal('displayMode');
@@ -152,6 +167,7 @@ function AppLayout({
     isEmbeddedApp && 'max-h-[600px] overflow-y-auto py-3',
   );
   const [logoutOpen, setLogoutOpen] = useState<boolean>(false);
+  const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   return (
     <div className={containerClassName}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -187,6 +203,51 @@ function AppLayout({
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
+              <div className="relative">
+                <Button variant="outline" onClick={() => setNotificationsOpen((prev) => !prev)}>
+                  <Bell className="h-4 w-4" />
+                </Button>
+                {notificationsOpen && (
+                  <div className="absolute right-0 z-20 mt-2 w-80 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-medium">Notifications</p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={onReloadNotifications}
+                        disabled={notificationsLoading}
+                        aria-label="Reload notifications"
+                      >
+                        <RefreshCcw
+                          className={cn('h-3.5 w-3.5', notificationsLoading && 'animate-spin')}
+                        />
+                      </Button>
+                    </div>
+                    {notificationsError ? (
+                      <p className="text-xs text-destructive">{notificationsError}</p>
+                    ) : notifications.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No notifications.</p>
+                    ) : (
+                      <ul className="max-h-72 space-y-2 overflow-y-auto pr-1 text-sm">
+                        {notifications.map((notification, index) => {
+                          const key = String(notification.message ?? index);
+                          return (
+                            <li key={key} className="rounded border p-2">
+                              <p>{getNotificationText(notification)}</p>
+                              {typeof notification.createdAt === 'string' && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {notification.createdAt}
+                                </p>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
               <Button variant="outline" onClick={() => setLogoutOpen(true)}>
                 Log out
               </Button>
@@ -253,6 +314,10 @@ export default function App() {
   const { token, saveToken, clearToken } = useLocalToken();
   const [topMovies, setTopMovies] = useState<MovieSummary[]>([]);
   const [error, setError] = useState<string>('');
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsError, setNotificationsError] = useState<string>('');
+  const [notificationsLoading, setNotificationsLoading] = useState<boolean>(false);
+  const notificationsRequested = useRef<boolean>(false);
   const topMoviesRequested = useRef<boolean>(false);
   const [isManualTheme, setIsManualTheme] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -330,10 +395,31 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  const loadNotifications = async () => {
+    try {
+      setNotificationsLoading(true);
+      setNotificationsError('');
+      const result = await getNotifications(isEmbeddedApp);
+      setNotifications(result);
+    } catch (fetchError: unknown) {
+      console.error(fetchError);
+      setNotificationsError(toErrorMessage(fetchError));
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
   const containerClassName = cn(
     APP_CONTAINER_BASE_CLASSES,
     isEmbeddedApp && 'max-h-[600px] overflow-y-auto',
   );
+
+  useEffect(() => {
+    if (!token && !isEmbeddedApp) return;
+    if (notificationsRequested.current) return;
+    notificationsRequested.current = true;
+    loadNotifications();
+  }, [token, isEmbeddedApp]);
 
   useEffect(() => {
     if (!token && !isEmbeddedApp) return;
@@ -372,6 +458,9 @@ export default function App() {
             saveToken(value);
             setError('');
             setTopMovies([]);
+            setNotifications([]);
+            setNotificationsError('');
+            notificationsRequested.current = false;
             topMoviesRequested.current = false;
             navigate('/search', { replace: true });
           }}
@@ -384,6 +473,9 @@ export default function App() {
     clearToken();
     setError('');
     setTopMovies([]);
+    setNotifications([]);
+    setNotificationsError('');
+    notificationsRequested.current = false;
     topMoviesRequested.current = false;
     navigate('/', { replace: true });
   };
@@ -391,6 +483,8 @@ export default function App() {
   const handleRestart = () => {
     setError('');
     topMoviesRequested.current = false;
+    notificationsRequested.current = false;
+    setNotificationsError('');
     navigate('/search', { replace: true });
   };
 
@@ -403,6 +497,10 @@ export default function App() {
       onToggleTheme={toggleTheme}
       theme={theme}
       isEmbeddedApp={isEmbeddedApp}
+      notifications={notifications}
+      notificationsLoading={notificationsLoading}
+      notificationsError={notificationsError}
+      onReloadNotifications={loadNotifications}
     >
       <Routes>
         <Route
