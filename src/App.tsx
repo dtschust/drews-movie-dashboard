@@ -203,51 +203,14 @@ function AppLayout({
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <div className="relative">
-                <Button variant="outline" onClick={() => setNotificationsOpen((prev) => !prev)}>
-                  <Bell className="h-4 w-4" />
-                </Button>
-                {notificationsOpen && (
-                  <div className="absolute right-0 z-20 mt-2 w-80 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
-                    <div className="mb-3 flex items-center justify-between">
-                      <p className="text-sm font-medium">Notifications</p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={onReloadNotifications}
-                        disabled={notificationsLoading}
-                        aria-label="Reload notifications"
-                      >
-                        <RefreshCcw
-                          className={cn('h-3.5 w-3.5', notificationsLoading && 'animate-spin')}
-                        />
-                      </Button>
-                    </div>
-                    {notificationsError ? (
-                      <p className="text-xs text-destructive">{notificationsError}</p>
-                    ) : notifications.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No notifications.</p>
-                    ) : (
-                      <ul className="max-h-72 space-y-2 overflow-y-auto pr-1 text-sm">
-                        {notifications.map((notification, index) => {
-                          const key = String(notification.message ?? index);
-                          return (
-                            <li key={key} className="rounded border p-2">
-                              <p>{getNotificationText(notification)}</p>
-                              {typeof notification.createdAt === 'string' && (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {notification.createdAt}
-                                </p>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => setNotificationsOpen(true)}
+                aria-label="Open notifications"
+                aria-expanded={notificationsOpen}
+              >
+                <Bell className="h-4 w-4" />
+              </Button>
               <Button variant="outline" onClick={() => setLogoutOpen(true)}>
                 Log out
               </Button>
@@ -255,6 +218,52 @@ function AppLayout({
           )}
         </div>
       </header>
+
+      <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
+          <DialogHeader className="border-b px-6 py-4">
+            <div className="flex items-center justify-between gap-3 pr-8">
+              <div className="space-y-1">
+                <DialogTitle>Notifications</DialogTitle>
+                <DialogDescription>Recent updates from the movie dashboard.</DialogDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onReloadNotifications}
+                disabled={notificationsLoading}
+                aria-label="Reload notifications"
+              >
+                <RefreshCcw className={cn('h-4 w-4', notificationsLoading && 'animate-spin')} />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="max-h-[min(24rem,calc(100vh-12rem))] overflow-y-auto px-6 py-4">
+            {notificationsError ? (
+              <p className="text-sm text-destructive">{notificationsError}</p>
+            ) : notifications.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No notifications.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {notifications.map((notification, index) => {
+                  const key = String(notification.id ?? notification.message ?? index);
+                  return (
+                    <li key={key} className="rounded border p-3">
+                      <p>{getNotificationText(notification)}</p>
+                      {typeof notification.createdAt === 'string' && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {notification.createdAt}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <DialogContent>
