@@ -4,7 +4,7 @@
   "description": "Static React app for searching and downloading movies via helper API",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run lint && npm run typecheck",
     "dev": "vite",
     "dev:embedded": "vite --mode embedded",
     "build:web": "vite build --mode web",
