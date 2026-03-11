@@ -262,12 +262,9 @@ function AppLayout({
       </header>
 
       <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <DialogContent
-          showClose={false}
-          className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0"
-        >
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
           <DialogHeader className="border-b px-6 py-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 pr-8">
               <DialogTitle>Finished</DialogTitle>
               <Button
                 variant="ghost"
