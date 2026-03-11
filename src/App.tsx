@@ -265,10 +265,7 @@ function AppLayout({
         <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
           <DialogHeader className="border-b px-6 py-4">
             <div className="flex items-center justify-between gap-3 pr-8">
-              <div className="min-w-0 space-y-1">
-                <DialogTitle>Notifications</DialogTitle>
-                <DialogDescription>Recent updates from the movie dashboard.</DialogDescription>
-              </div>
+              <DialogTitle>Finished</DialogTitle>
               <Button
                 variant="ghost"
                 size="icon"
