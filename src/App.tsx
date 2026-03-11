@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -14,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Bell, Maximize2, Moon, RefreshCcw, Sun } from 'lucide-react';
+import { Bell, Maximize2, Moon, RefreshCcw, Sun, X } from 'lucide-react';
 import { useEmbeddedAppContext } from './context/EmbeddedAppContext';
 import { rememberMovies } from '@/lib/movieCache';
 import { getNotifications, getTopMovies } from './api';
@@ -262,20 +263,35 @@ function AppLayout({
       </header>
 
       <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
+        <DialogContent
+          className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0"
+          hideCloseButton
+        >
           <DialogHeader className="border-b px-6 py-4">
-            <div className="flex items-center justify-between gap-3 pr-8">
+            <div className="flex items-center justify-between gap-3">
               <DialogTitle>Finished</DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={onReloadNotifications}
-                disabled={notificationsLoading}
-                aria-label="Reload notifications"
-              >
-                <RefreshCcw className={cn('h-4 w-4', notificationsLoading && 'animate-spin')} />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onReloadNotifications}
+                  disabled={notificationsLoading}
+                  aria-label="Reload notifications"
+                >
+                  <RefreshCcw className={cn('h-4 w-4', notificationsLoading && 'animate-spin')} />
+                </Button>
+                <DialogClose asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Close notifications"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </DialogClose>
+              </div>
             </div>
           </DialogHeader>
           <div className="min-w-0 max-h-[min(24rem,calc(100vh-12rem))] overflow-y-auto px-6 py-4">
